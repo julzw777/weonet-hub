@@ -9,6 +9,7 @@ import Customers from "./pages/Customers";
 import Billing from "./pages/Billing";
 import Tickets from "./pages/Tickets";
 import Network from "./pages/Network";
+import Inventory from "./pages/Inventory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,7 +29,7 @@ const App = () => (
             <Route path="/network" element={<Network />} />
             {/* Placeholder routes for remaining pages */}
             <Route path="/plans" element={<div className="p-6"><h1 className="text-2xl font-bold">Plans - Coming Soon</h1></div>} />
-            <Route path="/inventory" element={<div className="p-6"><h1 className="text-2xl font-bold">Inventory - Coming Soon</h1></div>} />
+            <Route path="/inventory" element={<Inventory />} />
             <Route path="/hotspot" element={<div className="p-6"><h1 className="text-2xl font-bold">Hotspot - Coming Soon</h1></div>} />
             <Route path="/reports" element={<div className="p-6"><h1 className="text-2xl font-bold">Reports - Coming Soon</h1></div>} />
             <Route path="/admin" element={<div className="p-6"><h1 className="text-2xl font-bold">Admin - Coming Soon</h1></div>} />

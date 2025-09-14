@@ -75,6 +75,22 @@ export interface InventoryItem {
   price: number;
   status: 'in-stock' | 'low-stock' | 'out-of-stock';
   lastUpdated: string;
+  loanable: boolean;
+  onLoan: number;
+  totalUnits: number;
+}
+
+export interface LoanItem {
+  id: string;
+  inventoryItemId: string;
+  customerId: string;
+  customerName: string;
+  serialNumber: string;
+  loanDate: string;
+  expectedReturnDate?: string;
+  actualReturnDate?: string;
+  status: 'on-loan' | 'returned' | 'overdue';
+  condition: 'new' | 'good' | 'fair' | 'damaged';
 }
 
 // Mock users
@@ -248,35 +264,177 @@ export const mockNetworkDevices: NetworkDevice[] = [
 export const mockInventory: InventoryItem[] = [
   {
     id: '1',
-    name: 'CAT6 Ethernet Cable - 100ft',
-    sku: 'CBL-CAT6-100',
-    category: 'Cables',
-    stock: 45,
-    minStock: 20,
-    price: 29.99,
+    name: 'Single Mode Fiber Optic Cable - 1000ft',
+    sku: 'FIB-SM-1000',
+    category: 'Fiber Optic',
+    stock: 25,
+    minStock: 10,
+    price: 299.99,
     status: 'in-stock',
-    lastUpdated: '2024-01-15'
+    lastUpdated: '2024-01-15',
+    loanable: false,
+    onLoan: 0,
+    totalUnits: 25
   },
   {
     id: '2',
-    name: 'Fiber Optic ONT - Residential',
-    sku: 'ONT-RES-001',
-    category: 'Network Equipment',
-    stock: 8,
-    minStock: 15,
-    price: 149.99,
-    status: 'low-stock',
-    lastUpdated: '2024-01-14'
+    name: 'Multi Mode Fiber Optic Cable - 500ft',
+    sku: 'FIB-MM-500',
+    category: 'Fiber Optic',
+    stock: 18,
+    minStock: 8,
+    price: 199.99,
+    status: 'in-stock',
+    lastUpdated: '2024-01-15',
+    loanable: false,
+    onLoan: 0,
+    totalUnits: 18
   },
   {
     id: '3',
-    name: '24-Port Gigabit Switch',
-    sku: 'SW-24G-001',
-    category: 'Network Equipment',
+    name: 'Customer Premises Router - Wi-Fi 6',
+    sku: 'RTR-CPE-W6',
+    category: 'Routers',
+    stock: 32,
+    minStock: 20,
+    price: 159.99,
+    status: 'in-stock',
+    lastUpdated: '2024-01-14',
+    loanable: true,
+    onLoan: 45,
+    totalUnits: 77
+  },
+  {
+    id: '4',
+    name: 'Enterprise Router - Dual WAN',
+    sku: 'RTR-ENT-DW',
+    category: 'Routers',
+    stock: 5,
+    minStock: 8,
+    price: 499.99,
+    status: 'low-stock',
+    lastUpdated: '2024-01-13',
+    loanable: true,
+    onLoan: 12,
+    totalUnits: 17
+  },
+  {
+    id: '5',
+    name: 'Optical Network Terminal (ONT) - Residential',
+    sku: 'ONT-RES-001',
+    category: 'ONT',
+    stock: 28,
+    minStock: 25,
+    price: 149.99,
+    status: 'in-stock',
+    lastUpdated: '2024-01-15',
+    loanable: true,
+    onLoan: 67,
+    totalUnits: 95
+  },
+  {
+    id: '6',
+    name: 'Optical Network Terminal (ONT) - Business',
+    sku: 'ONT-BUS-001',
+    category: 'ONT',
+    stock: 12,
+    minStock: 15,
+    price: 249.99,
+    status: 'low-stock',
+    lastUpdated: '2024-01-14',
+    loanable: true,
+    onLoan: 23,
+    totalUnits: 35
+  },
+  {
+    id: '7',
+    name: 'Optical Network Unit (ONU) - GPON',
+    sku: 'ONU-GPON-001',
+    category: 'ONU',
     stock: 0,
-    minStock: 5,
-    price: 299.99,
+    minStock: 10,
+    price: 89.99,
     status: 'out-of-stock',
-    lastUpdated: '2024-01-12'
+    lastUpdated: '2024-01-12',
+    loanable: true,
+    onLoan: 15,
+    totalUnits: 15
+  },
+  {
+    id: '8',
+    name: 'SC/APC Fiber Connectors - 50 Pack',
+    sku: 'CON-SCAPC-50',
+    category: 'Connectors',
+    stock: 156,
+    minStock: 100,
+    price: 89.99,
+    status: 'in-stock',
+    lastUpdated: '2024-01-15',
+    loanable: false,
+    onLoan: 0,
+    totalUnits: 156
+  },
+  {
+    id: '9',
+    name: 'LC/UPC Fiber Connectors - 25 Pack',
+    sku: 'CON-LCUPC-25',
+    category: 'Connectors',
+    stock: 67,
+    minStock: 50,
+    price: 49.99,
+    status: 'in-stock',
+    lastUpdated: '2024-01-14',
+    loanable: false,
+    onLoan: 0,
+    totalUnits: 67
+  },
+  {
+    id: '10',
+    name: 'FC/PC Fiber Connectors - 10 Pack',
+    sku: 'CON-FCPC-10',
+    category: 'Connectors',
+    stock: 23,
+    minStock: 30,
+    price: 34.99,
+    status: 'low-stock',
+    lastUpdated: '2024-01-13',
+    loanable: false,
+    onLoan: 0,
+    totalUnits: 23
+  }
+];
+
+// Mock loan items
+export const mockLoanItems: LoanItem[] = [
+  {
+    id: '1',
+    inventoryItemId: '3',
+    customerId: '1',
+    customerName: 'Tech Corp Solutions',
+    serialNumber: 'RTR-001234',
+    loanDate: '2023-06-15',
+    status: 'on-loan',
+    condition: 'good'
+  },
+  {
+    id: '2',
+    inventoryItemId: '5',
+    customerId: '2',
+    customerName: 'Creative Studios LLC',
+    serialNumber: 'ONT-005678',
+    loanDate: '2023-08-22',
+    status: 'on-loan',
+    condition: 'good'
+  },
+  {
+    id: '3',
+    inventoryItemId: '7',
+    customerId: '1',
+    customerName: 'Tech Corp Solutions',
+    serialNumber: 'ONU-009876',
+    loanDate: '2023-12-10',
+    expectedReturnDate: '2024-01-10',
+    status: 'overdue',
+    condition: 'fair'
   }
 ];
