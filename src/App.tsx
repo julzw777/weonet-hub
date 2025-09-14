@@ -3,7 +3,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import Dashboard from "./pages/Dashboard";
+import Customers from "./pages/Customers";
+import Billing from "./pages/Billing";
+import Tickets from "./pages/Tickets";
+import Network from "./pages/Network";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -14,11 +19,22 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <DashboardLayout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/billing" element={<Billing />} />
+            <Route path="/tickets" element={<Tickets />} />
+            <Route path="/network" element={<Network />} />
+            {/* Placeholder routes for remaining pages */}
+            <Route path="/plans" element={<div className="p-6"><h1 className="text-2xl font-bold">Plans - Coming Soon</h1></div>} />
+            <Route path="/inventory" element={<div className="p-6"><h1 className="text-2xl font-bold">Inventory - Coming Soon</h1></div>} />
+            <Route path="/hotspot" element={<div className="p-6"><h1 className="text-2xl font-bold">Hotspot - Coming Soon</h1></div>} />
+            <Route path="/reports" element={<div className="p-6"><h1 className="text-2xl font-bold">Reports - Coming Soon</h1></div>} />
+            <Route path="/admin" element={<div className="p-6"><h1 className="text-2xl font-bold">Admin - Coming Soon</h1></div>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </DashboardLayout>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
