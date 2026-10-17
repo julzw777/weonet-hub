@@ -1,14 +1,16 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { session, roles, signOut } = useAuth();
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -33,8 +35,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Button variant="ghost" size="icon" aria-label="Notifications">
                   <Bell className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label="User account">
-                  <User className="h-4 w-4" />
+                <span className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
+                  <User className="h-4 w-4" />{session?.user.email}
+                  <span className="ml-1 rounded bg-primary/20 px-1.5 py-0.5 uppercase text-primary">{roles.join(", ") || "no role"}</span>
+                </span>
+                <Button variant="ghost" size="icon" aria-label="Sign out" onClick={signOut}>
+                  <LogOut className="h-4 w-4" />
                 </Button>
               </div>
             </div>
