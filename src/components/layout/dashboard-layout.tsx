@@ -14,26 +14,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col">
+        <div className="min-w-0 flex-1 flex flex-col">
           {/* Header */}
-          <header className="h-16 border-b border-border bg-card">
-            <div className="flex items-center justify-between px-6 h-full">
+          <header className="h-16 border-b border-border/40 bg-background">
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6 h-full">
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
-                <div className="relative max-w-md">
+                <div className="relative hidden sm:block max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
                     placeholder="Search customers, tickets, devices..."
-                    className="pl-10 w-80"
+                      className="pl-10 w-64 lg:w-80 bg-card border-border/60"
                   />
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="icon" aria-label="Notifications">
                   <Bell className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="icon" aria-label="User account">
                   <User className="h-4 w-4" />
                 </Button>
               </div>
@@ -41,7 +41,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-background">
+          <main className="dashboard-content min-w-0 flex-1 p-4 md:p-6 bg-background">
             {children}
           </main>
         </div>

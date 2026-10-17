@@ -110,11 +110,11 @@ export function AppSidebar() {
 
   const getNavCls = (isActiveRoute: boolean) =>
     isActiveRoute 
-      ? "bg-primary text-primary-foreground font-medium" 
-      : "hover:bg-accent hover:text-accent-foreground";
+      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold border-l-2 border-primary" 
+      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
 
   return (
-    <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
+    <Sidebar collapsible="icon">
       <SidebarContent>
         {/* Logo/Brand */}
         <div className="p-4 border-b border-sidebar-border">
@@ -135,7 +135,7 @@ export function AppSidebar() {
         {Object.entries(groupedItems).map(([groupName, items]) => (
           <SidebarGroup key={groupName}>
             {!collapsed && (
-              <SidebarGroupLabel className="text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wider">
+              <SidebarGroupLabel className="text-[10px] font-medium text-sidebar-foreground/50 uppercase">
                 {groupName}
               </SidebarGroupLabel>
             )}
