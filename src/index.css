@@ -70,51 +70,7 @@ All colors MUST be HSL.
     --sidebar-ring: 263 64% 69%;
   }
 
-  .legacy-dark-unused {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
 
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-
-    --popover: 224 71% 4%;
-    --popover-foreground: 213 31% 91%;
-
-    --primary: 221 83% 53%;
-    --primary-foreground: 224 71% 4%;
-    --primary-glow: 221 83% 65%;
-
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 213 31% 91%;
-
-    --muted: 215 28% 17%;
-    --muted-foreground: 218 11% 65%;
-
-    --accent: 215 28% 17%;
-    --accent-foreground: 213 31% 91%;
-
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 213 31% 91%;
-
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 221 83% 53%;
-
-    --success: 142 76% 36%;
-    --success-foreground: 213 31% 91%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 224 71% 4%;
-    --info: 199 89% 48%;
-    --info-foreground: 213 31% 91%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
 }
 
 @layer base {
