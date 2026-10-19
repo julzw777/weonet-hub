@@ -68,6 +68,41 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_notes: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          reason: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          reason: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_notes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           account_number: string
@@ -164,9 +199,11 @@ export type Database = {
           customer_id: string
           due_date: string
           id: string
+          issued_at: string | null
           notes: string | null
           number: string
           state: string
+          subscription_id: string | null
           total: number
           updated_at: string
         }
@@ -177,9 +214,11 @@ export type Database = {
           customer_id: string
           due_date: string
           id?: string
+          issued_at?: string | null
           notes?: string | null
           number?: string
           state?: string
+          subscription_id?: string | null
           total: number
           updated_at?: string
         }
@@ -190,9 +229,11 @@ export type Database = {
           customer_id?: string
           due_date?: string
           id?: string
+          issued_at?: string | null
           notes?: string | null
           number?: string
           state?: string
+          subscription_id?: string | null
           total?: number
           updated_at?: string
         }
@@ -202,6 +243,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -295,6 +343,8 @@ export type Database = {
           currency_code: string
           currency_symbol: string
           customer_id: string | null
+          failed: boolean
+          failure_reason: string | null
           id: string
           notes: string | null
           received_date: string
@@ -310,6 +360,8 @@ export type Database = {
           currency_code: string
           currency_symbol: string
           customer_id?: string | null
+          failed?: boolean
+          failure_reason?: string | null
           id?: string
           notes?: string | null
           received_date: string
@@ -325,6 +377,8 @@ export type Database = {
           currency_code?: string
           currency_symbol?: string
           customer_id?: string | null
+          failed?: boolean
+          failure_reason?: string | null
           id?: string
           notes?: string | null
           received_date?: string
@@ -499,6 +553,7 @@ export type Database = {
           _due_date: string
           _items: Json
           _notes?: string
+          _subscription_id?: string
         }
         Returns: string
       }
@@ -517,6 +572,14 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      issue_credit_note: {
+        Args: { _amount: number; _invoice_id: string; _reason: string }
+        Returns: string
+      }
+      mark_payment_failed: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
       record_payment: {
         Args: {
           _amount: number
