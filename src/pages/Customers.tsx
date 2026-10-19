@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useAuth, formatMoney } from "@/lib/auth";
 import { canEditCustomers, canEditSubscriptions, nextStatuses, type SubStatus } from "@/lib/rules";
 import { useCustomers, useSaveCustomer, useSubscriptions, usePlans, useCreateSubscription, useSetSubscriptionStatus, type Customer } from "@/lib/data/hooks";
+import { CustomerInvoices } from "./Billing";
 
 const empty = { full_name: "", email: "", phone: "", customer_type: "residential", status: "active", notes: "" };
 
@@ -180,7 +181,7 @@ export default function Customers() {
                     {selected.notes && <p className="rounded-md bg-muted p-3">{selected.notes}</p>}
                   </TabsContent>
                   <TabsContent value="services" className="pt-4"><Services customerId={selected.id} editable={canEditSubscriptions(roles)} /></TabsContent>
-                  <TabsContent value="invoices" className="pt-4"><QueryState empty emptyText="Invoices are coming in the billing stage." /></TabsContent>
+                  <TabsContent value="invoices" className="pt-4">{roles.some((r) => ["admin", "finance", "care", "readonly"].includes(r)) ? <CustomerInvoices customerId={selected.id} /> : <QueryState empty emptyText="Your role cannot view billing records." />}</TabsContent>
                   <TabsContent value="tickets" className="pt-4"><QueryState empty emptyText="Customer-linked tickets are coming in the tickets stage." /></TabsContent>
                 </Tabs>
               </CardContent>
