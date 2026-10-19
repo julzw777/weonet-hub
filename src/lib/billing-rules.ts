@@ -8,8 +8,9 @@ export function invoiceStatus(state: InvoiceState, total: number, paid: number, 
   if (due < today) return "overdue";
   return paid > 0 ? "partial" : "unpaid";
 }
-export function paymentStatus(reversed: boolean, amount: number, allocated: number) {
+export function paymentStatus(reversed: boolean, amount: number, allocated: number, failed = false) {
   if (reversed) return "reversed";
+  if (failed) return "failed";
   if (allocated === 0) return "unmatched";
   return allocated < amount ? "partial" : "matched";
 }
@@ -20,6 +21,8 @@ export function allocationError(amount: number, available: number, balance: numb
   if (minorUnits(amount) > minorUnits(balance)) return "Amount exceeds the invoice balance";
   return null;
 }
+/** Credit notes reduce the open balance; payments and credits together settle an invoice. */
+export const invoiceBalance = (total: number, paid: number, credited: number) => Math.max(0, (minorUnits(total) - minorUnits(paid) - minorUnits(credited)) / 100);
 export function csvCell(value: unknown) {
   const text = String(value ?? "");
   const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;

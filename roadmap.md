@@ -5,7 +5,8 @@
 - [ ] Authenticated end-to-end checks: external Supabase sessions cannot be supplied in this environment.
 
 ## Later stages (not part of this continuation slice)
-- Stage 3 follow-up: credit notes, adjustments, reminders, recurring billing and signed provider webhooks (provider credentials and billing rules required).
+- [x] Credit notes, failed payments, service-linked invoices.
+- Stage 3 follow-up: adjustments policy, reminders, recurring billing and signed provider webhooks (provider credentials and billing rules required).
 - Stage 4: persistent tickets, inventory, loans and customer supply usage.
 - Stage 5: network, RADIUS and MikroTik (connection details required).
 - Stage 6: reports and operational hardening.

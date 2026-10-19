@@ -40,6 +40,27 @@ BEGIN
   PERFORM public.reverse_payment(payment,'Regression test');
   IF EXISTS(SELECT 1 FROM public.payment_allocations WHERE payment_id=payment AND NOT reversed) THEN RAISE EXCEPTION 'Reversal did not restore balance'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.audit_logs WHERE entity='payments' AND entity_id=payment::text AND action='update' AND actor_id=actor) THEN RAISE EXCEPTION 'Missing payment audit'; END IF;
+  -- Credit notes reduce the balance and cannot exceed it
+  PERFORM public.issue_credit_note(invoice,40,'Goodwill');
+  BEGIN
+   PERFORM public.issue_credit_note(invoice,61,'Too much');
+   RAISE EXCEPTION 'Over-credit accepted';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM='Over-credit accepted' THEN RAISE; END IF; END;
+  second:=public.record_payment(customer,'orange_money','__TEST-'||gen_random_uuid()::text,100,CURRENT_DATE);
+  BEGIN
+   PERFORM public.allocate_payment(second,invoice,61);
+   RAISE EXCEPTION 'Allocation above credited balance accepted';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM='Allocation above credited balance accepted' THEN RAISE; END IF; END;
+  PERFORM public.mark_payment_failed(second,'Provider confirmed not received');
+  BEGIN
+   PERFORM public.allocate_payment(second,invoice,10);
+   RAISE EXCEPTION 'Failed payment allocated';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM='Failed payment allocated' THEN RAISE; END IF; END;
+  BEGIN
+   PERFORM public.create_invoice(customer,CURRENT_DATE,'[{"description":"x","quantity":1,"unit_price":1}]',NULL,gen_random_uuid());
+   RAISE EXCEPTION 'Foreign service accepted';
+  EXCEPTION WHEN raise_exception THEN IF SQLERRM='Foreign service accepted' THEN RAISE; END IF; END;
+  IF NOT EXISTS(SELECT 1 FROM public.audit_logs WHERE entity='credit_notes' AND actor_id=actor) THEN RAISE EXCEPTION 'Missing credit audit'; END IF;
   PERFORM public.set_invoice_state(invoice,'void');
   RAISE EXCEPTION '__TEST_ROLLBACK_SUCCESS__';
  EXCEPTION WHEN raise_exception THEN
