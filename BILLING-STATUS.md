@@ -17,6 +17,7 @@ Migrations were applied through Supabase: four financial tables, indexes, grants
 - `supabase/tests/billing.sql`: rollback-only checks passed against connected Supabase for authorization, invoice total, draft allocation denial, duplicate reference, over-allocation, paid-invoice void denial, excess payment, reversal and audit.
 - These SQL checks exercise database operations as controlled fixtures, not a real browser session. They do not establish full RLS isolation or concurrent-race test coverage.
 - Authenticated browser checks are unavailable for this externally managed Supabase connection. The full create/issue/pay/allocate/reverse UI flow remains unverified.
+- Browser check: `/billing` redirects to `/login`, with no runtime errors. Automatic preview build checks report `build OK`.
 - Security review: new tables deny anonymous access and direct authenticated writes. Signed-in table discovery and the five intentionally callable role-checked definer operations produce expected advisor warnings. Existing warnings include disabled leaked-password protection; no auth settings were changed.
 
 ## Prioritized remaining work
