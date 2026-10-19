@@ -13,9 +13,11 @@ import Network from "./pages/Network";
 import Inventory from "./pages/Inventory";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import Plans from "./pages/Plans";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
-const Soon = ({ t }: { t: string }) => <div className="p-6"><h1 className="text-2xl font-bold">{t} - Coming Soon</h1></div>;
+const Soon = ({ t, d }: { t: string; d: string }) => <div className="p-6"><h1 className="text-2xl font-bold">{t}</h1><p className="mt-2 text-muted-foreground">{d}</p></div>;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -35,11 +37,11 @@ const App = () => (
                     <Route path="/billing" element={<RequireAuth roles={["finance", "readonly"]}><Billing /></RequireAuth>} />
                     <Route path="/tickets" element={<RequireAuth roles={["care", "tech", "noc", "readonly"]}><Tickets /></RequireAuth>} />
                     <Route path="/network" element={<RequireAuth roles={["noc", "tech", "readonly"]}><Network /></RequireAuth>} />
-                    <Route path="/plans" element={<Soon t="Plans" />} />
+                    <Route path="/plans" element={<Plans />} />
                     <Route path="/inventory" element={<RequireAuth roles={["warehouse", "tech", "readonly"]}><Inventory /></RequireAuth>} />
-                    <Route path="/hotspot" element={<Soon t="Hotspot" />} />
-                    <Route path="/reports" element={<Soon t="Reports" />} />
-                    <Route path="/admin" element={<RequireAuth roles={["admin"]}><Soon t="Admin" /></RequireAuth>} />
+                    <Route path="/hotspot" element={<Soon t="Hotspot" d="Hotspot vouchers are out of scope until Weonet confirms the hotspot controller and voucher rules." />} />
+                    <Route path="/reports" element={<Soon t="Reports" d="Reports will be built on real billing and ticket data in a later stage." />} />
+                    <Route path="/admin" element={<RequireAuth roles={["admin"]}><Admin /></RequireAuth>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </DashboardLayout>
