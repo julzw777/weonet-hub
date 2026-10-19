@@ -118,6 +118,94 @@ export type Database = {
           },
         ]
       }
+      invoice_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          quantity: number
+          unit_price: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          currency_code: string
+          currency_symbol: string
+          customer_id: string
+          due_date: string
+          id: string
+          notes: string | null
+          number: string
+          state: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code: string
+          currency_symbol: string
+          customer_id: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          number?: string
+          state?: string
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          currency_symbol?: string
+          customer_id?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          number?: string
+          state?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           address: string | null
@@ -153,6 +241,107 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payment_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          payment_id: string
+          reversed: boolean
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          payment_id: string
+          reversed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          payment_id?: string
+          reversed?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          channel: string
+          created_at: string
+          currency_code: string
+          currency_symbol: string
+          customer_id: string | null
+          id: string
+          notes: string | null
+          received_date: string
+          reference: string
+          reversal_reason: string | null
+          reversed: boolean
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          channel: string
+          created_at?: string
+          currency_code: string
+          currency_symbol: string
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          received_date: string
+          reference: string
+          reversal_reason?: string | null
+          reversed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          channel?: string
+          created_at?: string
+          currency_code?: string
+          currency_symbol?: string
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          received_date?: string
+          reference?: string
+          reversal_reason?: string | null
+          reversed?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_plans: {
         Row: {
@@ -300,6 +489,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      allocate_payment: {
+        Args: { _amount: number; _invoice_id: string; _payment_id: string }
+        Returns: undefined
+      }
+      create_invoice: {
+        Args: {
+          _customer_id: string
+          _due_date: string
+          _items: Json
+          _notes?: string
+        }
+        Returns: string
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["staff_role"][]
@@ -315,6 +517,26 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      record_payment: {
+        Args: {
+          _amount: number
+          _channel: string
+          _customer_id: string
+          _notes?: string
+          _received_date: string
+          _reference: string
+        }
+        Returns: string
+      }
+      require_billing_writer: { Args: never; Returns: undefined }
+      reverse_payment: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
+      set_invoice_state: {
+        Args: { _id: string; _state: string }
+        Returns: undefined
+      }
     }
     Enums: {
       staff_role:
