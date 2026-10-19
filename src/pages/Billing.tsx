@@ -1,165 +1,66 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Download, Plus, Search, Wallet } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Download, Filter } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { mockInvoices, mockCustomers } from "@/lib/mock-data";
+import { QueryState } from "@/components/ui/query-state";
+import { InvoiceForm, PaymentForm, ReconcileForm, channels } from "@/components/billing-forms";
+import { useAuth } from "@/lib/auth";
+import { canManageBilling, csvCell } from "@/lib/billing-rules";
+import { useCustomers } from "@/lib/data/hooks";
+import { useBilling, useBillingAction, useBillingSettings, billingMoney, type BillingInvoice, type BillingPayment } from "@/lib/data/billing";
 
+function exportRows(name: string, rows: unknown[][]) {
+  const url = URL.createObjectURL(new Blob(["\uFEFF" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a"); link.href = url; link.download = `${name}.csv`; link.click(); URL.revokeObjectURL(url);
+}
+export function CustomerInvoices({ customerId }: { customerId: string }) {
+  const billing = useBilling();
+  const rows = billing.data?.invoices.filter((i) => i.customer_id === customerId) ?? [];
+  return <div className="space-y-3"><QueryState loading={billing.isLoading} error={billing.error} empty={!!billing.data && !rows.length} emptyText="No invoices yet." />{rows.map((i) => <div key={i.id} className="flex flex-wrap justify-between gap-2 border-b border-border py-3"><div className="space-y-1"><p className="font-medium">{i.number}</p><p className="text-xs text-muted-foreground">Due {i.due_date} · {i.currency_code}</p></div><div className="text-right"><StatusBadge status={i.status} /><p className="mt-1 text-sm">Balance {billingMoney(i.balance, i.currency_symbol)}</p></div></div>)}</div>;
+}
 export default function Billing() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const filteredInvoices = mockInvoices.filter(invoice => {
-    const customer = mockCustomers.find(c => c.id === invoice.customerId);
-    const matchesSearch = invoice.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const paidAmount = filteredInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0);
-  const overdueAmount = filteredInvoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0);
-
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Billing Center</h1>
-          <p className="text-muted-foreground">Manage invoices and billing operations</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Invoice
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-2xl font-bold">${totalAmount.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total Invoices</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-2xl font-bold text-success">${paidAmount.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Paid Invoices</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-2xl font-bold text-destructive">${overdueAmount.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Overdue Amount</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-2xl font-bold">{filteredInvoices.length}</div>
-            <p className="text-xs text-muted-foreground">Total Count</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoice List</CardTitle>
-          <div className="flex gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search invoices or customers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={statusFilter === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("all")}
-              >
-                All
-              </Button>
-              <Button
-                variant={statusFilter === "paid" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("paid")}
-              >
-                Paid
-              </Button>
-              <Button
-                variant={statusFilter === "overdue" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("overdue")}
-              >
-                Overdue
-              </Button>
-              <Button
-                variant={statusFilter === "draft" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter("draft")}
-              >
-                Draft
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredInvoices.map((invoice) => {
-              const customer = mockCustomers.find(c => c.id === invoice.customerId);
-              return (
-                <div key={invoice.id} className="border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <h4 className="font-medium">{invoice.id}</h4>
-                        <StatusBadge status={invoice.status} />
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {customer?.name} • {customer?.email}
-                      </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span>Created: {invoice.createdDate}</span>
-                        <span>Due: {invoice.dueDate}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xl font-semibold">${invoice.amount}</div>
-                      <div className="flex gap-2 mt-2">
-                        <Button variant="outline" size="sm">View</Button>
-                        <Button variant="outline" size="sm">Download</Button>
-                        {invoice.status === 'overdue' && (
-                          <Button variant="destructive" size="sm">Send Reminder</Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          
-          {filteredInvoices.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No invoices found matching your criteria
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const { roles } = useAuth();
+  const editable = canManageBilling(roles);
+  const billing = useBilling();
+  const customers = useCustomers();
+  const settings = useBillingSettings();
+  const state = useBillingAction("set_invoice_state");
+  const reverse = useBillingAction("reverse_payment");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [tab, setTab] = useState("invoices");
+  const [form, setForm] = useState<"invoice" | "payment" | null>(null);
+  const [view, setView] = useState<BillingInvoice | null>(null);
+  const [reconcile, setReconcile] = useState<BillingPayment | null>(null);
+  const [reversal, setReversal] = useState<BillingPayment | null>(null);
+  const [reason, setReason] = useState("");
+  const customerName = (id: string | null) => customers.data?.find((c) => c.id === id)?.full_name ?? "Unassigned";
+  const match = (reference: string, customer: string | null) => `${reference} ${customerName(customer)}`.toLowerCase().includes(search.toLowerCase());
+  const invoices = (billing.data?.invoices ?? []).filter((i) => match(i.number, i.customer_id) && (filter === "all" || filter === i.status));
+  const payments = (billing.data?.payments ?? []).filter((p) => match(p.reference, p.customer_id) && (tab !== "queue" || (!p.reversed && p.available > 0)));
+  const sums = new Map<string, { symbol: string; total: number; paid: number; overdue: number }>();
+  for (const i of invoices.filter((i) => i.state === "issued")) {
+    const current = sums.get(i.currency_code) ?? { symbol: i.currency_symbol, total: 0, paid: 0, overdue: 0 };
+    current.total += Number(i.total); current.paid += i.paid; if (i.status === "overdue") current.overdue += i.balance; sums.set(i.currency_code, current);
+  }
+  const summary = (key: "total" | "paid" | "overdue") => sums.size ? Array.from(sums.entries()).map(([code, s]) => <div key={code} className="text-xl font-semibold tabular-nums">{billingMoney(s[key], s.symbol)} <span className="text-xs text-muted-foreground">{code}</span></div>) : <div className="text-xl font-semibold">{settings.data ? billingMoney(0, settings.data.currency_symbol) : "—"}</div>;
+  const exportInvoices = (rows = invoices) => exportRows("weonet-invoices", [["Invoice", "Customer", "Status", "Due", "Currency", "Total", "Paid", "Balance"], ...rows.map((i) => [i.number, customerName(i.customer_id), i.status, i.due_date, i.currency_code, i.total, i.paid, i.balance])]);
+  return <div className="space-y-6">
+    <div className="flex flex-wrap items-center justify-between gap-4"><h1 className="text-3xl font-bold">Billing Center</h1><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!billing.data} onClick={() => tab === "invoices" ? exportInvoices() : exportRows("weonet-payments", [["Reference", "Customer", "Channel", "Date", "Currency", "Amount", "Allocated", "Unallocated", "Status"], ...payments.map((p) => [p.reference, customerName(p.customer_id), p.channel, p.received_date, p.currency_code, p.amount, p.allocated, p.reversed ? 0 : p.available, p.status])])}><Download className="mr-2 h-4 w-4" />Export</Button>{editable && <><Button variant="outline" disabled={!settings.data} onClick={() => setForm("payment")}><Wallet className="mr-2 h-4 w-4" />Record payment</Button><Button disabled={!settings.data} onClick={() => setForm("invoice")}><Plus className="mr-2 h-4 w-4" />New invoice</Button></>}</div></div>
+    <QueryState error={settings.error || customers.error} />
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{([ ["Issued total", "total"], ["Paid", "paid"], ["Overdue balance", "overdue"] ] as const).map(([label, key]) => <div key={key} className="rounded-lg border border-border bg-card p-5"><p className="mb-2 text-xs text-muted-foreground">{label}</p>{summary(key)}</div>)}<div className="rounded-lg border border-border bg-card p-5"><p className="mb-2 text-xs text-muted-foreground">Invoice count</p><div className="text-xl font-semibold">{billing.data ? invoices.length : "—"}</div></div></div>
+    <Tabs value={tab} onValueChange={setTab}><div className="flex flex-wrap items-center justify-between gap-4"><TabsList><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="payments">Payments</TabsTrigger><TabsTrigger value="queue">Reconciliation</TabsTrigger></TabsList><div className="relative w-full sm:w-72"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label="Search billing" placeholder="Search reference or customer…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} /></div></div>
+    <TabsContent value="invoices" className="mt-4 space-y-4"><Select value={filter} onValueChange={setFilter}><SelectTrigger aria-label="Invoice status" className="w-44"><SelectValue /></SelectTrigger><SelectContent>{["all", "draft", "unpaid", "partial", "paid", "overdue", "void"].map((s) => <SelectItem key={s} value={s}>{s === "all" ? "All statuses" : s[0].toUpperCase() + s.slice(1)}</SelectItem>)}</SelectContent></Select><QueryState loading={billing.isLoading} error={billing.error} empty={!!billing.data && !invoices.length} emptyText="No invoices found." />{invoices.map((i) => <div key={i.id} className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4"><div><div className="flex flex-wrap items-center gap-3"><h3 className="font-medium">{i.number}</h3><StatusBadge status={i.status} /></div><p className="mt-1 text-sm text-muted-foreground">{customerName(i.customer_id)} · Due {i.due_date}</p></div><div className="flex flex-wrap items-center gap-4"><div className="text-right"><p className="font-semibold">{billingMoney(Number(i.total), i.currency_symbol)}</p><p className="text-xs text-muted-foreground">Balance {billingMoney(i.balance, i.currency_symbol)} · {i.currency_code}</p></div><Button variant="outline" size="sm" onClick={() => setView(i)}>View</Button>{editable && i.state === "draft" && <Button size="sm" disabled={state.isPending} onClick={() => state.mutate({ _id: i.id, _state: "issued" }, { onSuccess: () => toast.success("Invoice issued"), onError: (e) => toast.error(e.message) })}>Issue</Button>}</div></div>)}</TabsContent>
+    {["payments", "queue"].map((key) => <TabsContent key={key} value={key} className="mt-4"><QueryState loading={billing.isLoading} error={billing.error} empty={!!billing.data && !payments.length} emptyText={key === "queue" ? "No unallocated payments." : "No payments found."} /><div className="space-y-3">{payments.map((p) => <div key={p.id} className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4"><div><div className="flex flex-wrap gap-3"><h3 className="font-medium break-all">{p.reference}</h3><StatusBadge status={p.status} /></div><p className="mt-1 text-sm text-muted-foreground">{customerName(p.customer_id)} · {channels[p.channel as keyof typeof channels] ?? p.channel} · {p.received_date}</p>{p.reversed && <p className="mt-1 text-sm text-destructive">{p.reversal_reason}</p>}</div><div className="flex flex-wrap items-center gap-3"><div className="text-right"><p className="font-semibold">{billingMoney(Number(p.amount), p.currency_symbol)}</p><p className="text-xs text-muted-foreground">Unallocated {billingMoney(p.reversed ? 0 : p.available, p.currency_symbol)} · {p.currency_code}</p></div>{editable && !p.reversed && <>{p.available > 0 && <Button size="sm" onClick={() => setReconcile(p)}>Allocate</Button>}<Button size="sm" variant="outline" onClick={() => { setReason(""); setReversal(p); }}>Reverse</Button></>}</div></div>)}</div></TabsContent>)}
+    </Tabs>
+    {form === "invoice" && <InvoiceForm close={() => setForm(null)} />}{form === "payment" && <PaymentForm close={() => setForm(null)} />}{reconcile && <ReconcileForm payment={reconcile} close={() => setReconcile(null)} />}
+    <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}><DialogContent className="max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>{view?.number}</DialogTitle></DialogHeader>{view && <><p className="text-sm text-muted-foreground">{customerName(view.customer_id)} · Due {view.due_date} · {view.currency_code}</p><StatusBadge status={view.status} />{view.items.map((l) => <div key={l.id} className="flex justify-between gap-3 border-b border-border py-3"><div className="min-w-0"><p className="break-words">{l.description}</p><p className="text-xs text-muted-foreground">{l.quantity} × {billingMoney(Number(l.unit_price), view.currency_symbol)}</p></div><span className="shrink-0">{billingMoney(Number(l.amount), view.currency_symbol)}</span></div>)}<p className="font-semibold">Total {billingMoney(Number(view.total), view.currency_symbol)}</p><p className="text-sm">Paid {billingMoney(view.paid, view.currency_symbol)} · Balance {billingMoney(view.balance, view.currency_symbol)}</p>{view.notes && <p className="break-words text-sm text-muted-foreground">{view.notes}</p>}<h3 className="text-sm font-medium">Payment history</h3>{billing.data?.allocations.filter((a) => a.invoice_id === view.id).map((a) => <p key={a.id} className="text-xs text-muted-foreground">{billing.data?.payments.find((p) => p.id === a.payment_id)?.reference} · {billingMoney(Number(a.amount), view.currency_symbol)}{a.reversed ? " · Reversed" : ""}</p>)}<DialogFooter><Button variant="outline" onClick={() => exportInvoices([view])}><Download className="mr-2 h-4 w-4" />Download CSV</Button>{editable && view.state !== "void" && <Button variant="destructive" disabled={state.isPending} onClick={() => { if (!confirm("Void this invoice? This cannot be undone.")) return; state.mutate({ _id: view.id, _state: "void" }, { onSuccess: () => { toast.success("Invoice voided"); setView(null); }, onError: (e) => toast.error(e.message) }); }}>Void</Button>}</DialogFooter></>}</DialogContent></Dialog>
+    <Dialog open={!!reversal} onOpenChange={(o) => !o && setReversal(null)}><DialogContent><DialogHeader><DialogTitle>Reverse {reversal?.reference}</DialogTitle></DialogHeader><Label htmlFor="reversal-reason">Reason</Label><Input id="reversal-reason" maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} /><DialogFooter><Button variant="destructive" disabled={!reason.trim() || reverse.isPending} onClick={() => { if (!reversal) return; reverse.mutate({ _id: reversal.id, _reason: reason }, { onSuccess: () => { toast.success("Payment reversed; invoice balances restored"); setReversal(null); }, onError: (e) => toast.error(e.message) }); }}>Reverse payment</Button></DialogFooter></DialogContent></Dialog>
+  </div>;
 }

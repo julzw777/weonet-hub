@@ -22,10 +22,12 @@ export const useSubscriptions = (customerId?: string) =>
   useQuery({
     queryKey: ["subscriptions", customerId],
     enabled: !!customerId,
-    queryFn: async () =>
-      unwrap<Subscription[]>(
-        await supabase.from("subscriptions").select("*, service_plans(name, monthly_price)").eq("customer_id", customerId!).order("created_at", { ascending: false }),
-      ),
+    queryFn: async () => {
+      if (!customerId) return [];
+      return unwrap<Subscription[]>(
+        await supabase.from("subscriptions").select("*, service_plans(name, monthly_price)").eq("customer_id", customerId).order("created_at", { ascending: false }),
+      );
+    },
   });
 
 function useSave<T>(key: string, fn: (v: T) => PromiseLike<{ error: { message: string } | null }>) {
