@@ -28,3 +28,16 @@ Migrations were applied through Supabase: four financial tables, indexes, grants
 5. RADIUS/MikroTik operations, reports and operational hardening.
 
 Limits: invoice drafts cannot yet be edited, downloads are CSV rather than PDF, payment entry currently requires selecting an existing customer, and the data layer loads financial history in pages rather than server-filtered reporting. Other screens still retain mock data until their stage.
+## Increment 2026-10-19 (credit notes, failed payments, service links)
+- Invoices: optional `subscription_id` (must belong to the invoice's customer, checked server-side) and `issued_at` set when issued.
+- `credit_notes` table + `issue_credit_note()` (Finance/Admin, issued invoices only, cannot exceed open balance, audited). Balance = total − active allocations − credits.
+- `mark_payment_failed()` (Finance/Admin, only when nothing is allocated; failed payments can never be allocated).
+- Payment states: unmatched, partial (excess left unallocated), matched, reversed, failed.
+
+## Provider boundary (not active)
+Orange Money, AfriMoney and Vult are recorded manually only. No webhook or API is enabled. To activate a provider Weonet must supply: official API docs, merchant/account IDs, API keys, webhook signing secret and verification method, sandbox access, and settlement report format. Each will be a server-side function storing secrets in Supabase secrets and posting through `record_payment` (unique channel+reference gives idempotency). A browser response or screenshot is never proof of payment.
+
+## Business decisions still required
+- Currency: SLE / Le is a configured placeholder chosen during setup, not a confirmed business rule.
+- Invoice cadence (monthly/prepaid), proration, taxes/VAT, late fees, adjustments policy, reminder schedule and channels.
+- Suspension/disconnection policy — no automation exists.
