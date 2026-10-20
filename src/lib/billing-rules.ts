@@ -27,4 +27,7 @@ export function csvCell(value: unknown) {
   const text = String(value ?? "");
   const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return `"${safe.replace(/"/g, '""')}"`;
-}
+}/** Reminders are logged by staff only; no automatic sending until Weonet confirms timing and delivery rules. */
+export type ReminderStatus = "logged" | "sent" | "delivered" | "failed";
+export const reminderNextStatuses = (s: ReminderStatus): ReminderStatus[] => s === "logged" ? ["sent", "failed"] : s === "sent" ? ["delivered", "failed"] : [];
+export const AUTOMATIC_REMINDERS_ENABLED = false;
