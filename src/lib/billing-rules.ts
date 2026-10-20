@@ -46,3 +46,14 @@ export function agingBucket(due: string, today: string): AgingBucket {
   return days <= 30 ? "1-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
 }
 export const firstOfMonth = (d: string) => /^\d{4}-\d{2}-01$/.test(d);
+/** Collections summary for issued invoices whose issue date falls within [from, to] (inclusive, YYYY-MM-DD). */
+export type CollectionInvoice = { state: string; status: string; issued_at: string | null; total: number; paid: number; credited: number; balance: number };
+export function collectionsSummary(rows: CollectionInvoice[], from: string, to: string) {
+  const inRange = rows.filter((i) => i.state === "issued" && i.issued_at && i.issued_at.slice(0, 10) >= from && i.issued_at.slice(0, 10) <= to);
+  const group = (pred: (i: CollectionInvoice) => boolean) => {
+    const g = inRange.filter(pred);
+    const sum = (k: "total" | "paid" | "credited" | "balance") => g.reduce((t, i) => t + minorUnits(Number(i[k])), 0) / 100;
+    return { count: g.length, total: sum("total"), paid: sum("paid"), credited: sum("credited"), balance: sum("balance") };
+  };
+  return { invoices: inRange, paid: group((i) => i.status === "paid"), partial: group((i) => i.status === "partial"), outstanding: group((i) => i.status === "unpaid" || i.status === "overdue" || i.status === "partial"), all: group(() => true) };
+}
