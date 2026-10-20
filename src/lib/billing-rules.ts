@@ -31,3 +31,18 @@ export function csvCell(value: unknown) {
 export type ReminderStatus = "logged" | "sent" | "delivered" | "failed";
 export const reminderNextStatuses = (s: ReminderStatus): ReminderStatus[] => s === "logged" ? ["sent", "failed"] : s === "sent" ? ["delivered", "failed"] : [];
 export const AUTOMATIC_REMINDERS_ENABLED = false;
+/** Lists what Weonet must still confirm before recurring invoices can be generated. Empty = ready. */
+export function recurringBlockers(s: { currency_confirmed: boolean; recurring_cadence: string | null; recurring_due_days: number | null }) {
+  const out: string[] = [];
+  if (!s.currency_confirmed) out.push("Currency not confirmed by Weonet");
+  if (!s.recurring_cadence) out.push("Invoice cadence not set");
+  if (s.recurring_due_days == null) out.push("Days until due not set");
+  return out;
+}
+export type AgingBucket = "current" | "1-30" | "31-60" | "61-90" | "90+";
+export function agingBucket(due: string, today: string): AgingBucket {
+  const days = Math.floor((Date.parse(today) - Date.parse(due)) / 86400000);
+  if (days <= 0) return "current";
+  return days <= 30 ? "1-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
+}
+export const firstOfMonth = (d: string) => /^\d{4}-\d{2}-01$/.test(d);

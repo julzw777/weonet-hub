@@ -45,3 +45,11 @@ Orange Money, AfriMoney and Vult are recorded manually only. No webhook or API i
 ## Increment 2026-10-20 (reminder history)
 - `invoice_reminders` table: channel, recipient, status (logged → sent → delivered, or failed with reason), sent/delivered/failed timestamps, recorded_by. Read: Admin/Finance/Care/ReadOnly; write only via `log_invoice_reminder()` / `set_reminder_status()` (Finance/Admin, issued invoices only, audited).
 - Nothing is sent automatically; staff record reminders they sent by hand. Automatic sending requires Weonet to confirm schedule, channels, wording and a delivery provider.
+
+## Increment 2026-10-20 (section 5 close-out)
+**Live:** invoices with line items, service link, issue/void, balances (total − payments − credit notes), customer invoice history, allocation/reversal, credit notes (the only adjustment type), reminder history (manual log only), CSV exports for invoices, payments, AR aging and credit notes, with an aging summary in the "Recurring & reports" tab.
+**Preview-only / gated:**
+- Currency SLE/Le is shown as a *placeholder* until an Admin records Weonet's confirmation. The currency can't change once invoices or payments exist.
+- Recurring invoices: `preview_recurring_invoices(period)` lists active priced services (read-only). `generate_recurring_invoices(period)` creates **drafts only**, one per service per month (unique index plus a lock). It refuses to run until currency is confirmed and cadence/due days are set. Only monthly cadence is offered, at full plan price.
+- Not implemented on purpose (Weonet decisions): taxes/VAT, proration, late fees, grace periods, debit adjustments, discounts, reminder schedule/channels/provider, suspension.
+**Tests:** `npm test` (50 passed); `supabase/tests/recurring.sql` rollback checks passed.

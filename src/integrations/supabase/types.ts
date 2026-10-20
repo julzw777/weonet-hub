@@ -17,23 +17,38 @@ export type Database = {
       app_settings: {
         Row: {
           company_name: string
+          confirmed_at: string | null
+          confirmed_by: string | null
           currency_code: string
+          currency_confirmed: boolean
           currency_symbol: string
           id: number
+          recurring_cadence: string | null
+          recurring_due_days: number | null
           updated_at: string
         }
         Insert: {
           company_name?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           currency_code?: string
+          currency_confirmed?: boolean
           currency_symbol?: string
           id?: number
+          recurring_cadence?: string | null
+          recurring_due_days?: number | null
           updated_at?: string
         }
         Update: {
           company_name?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           currency_code?: string
+          currency_confirmed?: boolean
           currency_symbol?: string
           id?: number
+          recurring_cadence?: string | null
+          recurring_due_days?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -258,6 +273,8 @@ export type Database = {
           issued_at: string | null
           notes: string | null
           number: string
+          period_end: string | null
+          period_start: string | null
           state: string
           subscription_id: string | null
           total: number
@@ -273,6 +290,8 @@ export type Database = {
           issued_at?: string | null
           notes?: string | null
           number?: string
+          period_end?: string | null
+          period_start?: string | null
           state?: string
           subscription_id?: string | null
           total: number
@@ -288,6 +307,8 @@ export type Database = {
           issued_at?: string | null
           notes?: string | null
           number?: string
+          period_end?: string | null
+          period_start?: string | null
           state?: string
           subscription_id?: string | null
           total?: number
@@ -731,6 +752,10 @@ export type Database = {
         }
         Returns: string
       }
+      generate_recurring_invoices: {
+        Args: { _period_start: string }
+        Returns: number
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["staff_role"][]
@@ -762,6 +787,19 @@ export type Database = {
       mark_payment_failed: {
         Args: { _id: string; _reason: string }
         Returns: undefined
+      }
+      preview_recurring_invoices: {
+        Args: { _period_start: string }
+        Returns: {
+          already_invoiced: boolean
+          amount: number
+          customer_id: string
+          customer_name: string
+          period_end: string
+          period_start: string
+          plan_name: string
+          subscription_id: string
+        }[]
       }
       record_payment: {
         Args: {
