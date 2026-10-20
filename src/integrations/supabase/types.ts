@@ -168,6 +168,63 @@ export type Database = {
           },
         ]
       }
+      equipment_loans: {
+        Row: {
+          condition: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          item_id: string
+          loaned_at: string
+          recorded_by: string | null
+          returned_at: string | null
+          serial: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          condition?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          item_id: string
+          loaned_at?: string
+          recorded_by?: string | null
+          returned_at?: string | null
+          serial: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          condition?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          item_id?: string
+          loaned_at?: string
+          recorded_by?: string | null
+          returned_at?: string | null
+          serial?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_loans_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_loans_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rates: {
         Row: {
           base_code: string
@@ -198,6 +255,45 @@ export type Database = {
           quote_code?: string
           quote_symbol?: string
           set_by?: string
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          loanable: boolean
+          name: string
+          reorder_level: number
+          sku: string
+          stock_qty: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          loanable?: boolean
+          name: string
+          reorder_level?: number
+          sku: string
+          stock_qty?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          loanable?: boolean
+          name?: string
+          reorder_level?: number
+          sku?: string
+          stock_qty?: number
+          unit?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -691,6 +787,74 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          id: string
+          item_id: string
+          kind: string
+          loan_id: string | null
+          note: string | null
+          quantity: number
+          ticket_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          item_id: string
+          kind: string
+          loan_id?: string | null
+          note?: string | null
+          quantity: number
+          ticket_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          item_id?: string
+          kind?: string
+          loan_id?: string | null
+          note?: string | null
+          quantity?: number
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -748,6 +912,62 @@ export type Database = {
           },
         ]
       }
+      tickets: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          id: string
+          number: string
+          priority: string
+          resolved_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          number?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          number?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -771,6 +991,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _move_stock: {
+        Args: {
+          _customer: string
+          _delta: number
+          _item: string
+          _kind: string
+          _loan: string
+          _note: string
+          _ticket: string
+        }
+        Returns: string
+      }
+      adjust_stock: {
+        Args: {
+          _item_id: string
+          _kind: string
+          _note: string
+          _quantity: number
+        }
+        Returns: string
+      }
       allocate_payment: {
         Args: { _amount: number; _invoice_id: string; _payment_id: string }
         Returns: undefined
@@ -806,6 +1047,10 @@ export type Database = {
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       issue_credit_note: {
         Args: { _amount: number; _invoice_id: string; _reason: string }
+        Returns: string
+      }
+      loan_equipment: {
+        Args: { _customer_id: string; _item_id: string; _serial: string }
         Returns: string
       }
       log_invoice_reminder: {
@@ -845,7 +1090,21 @@ export type Database = {
         }
         Returns: string
       }
+      record_supply_usage: {
+        Args: {
+          _customer_id: string
+          _item_id: string
+          _note: string
+          _quantity: number
+          _ticket_id: string
+        }
+        Returns: string
+      }
       require_billing_writer: { Args: never; Returns: undefined }
+      return_equipment: {
+        Args: { _condition: string; _loan_id: string; _outcome: string }
+        Returns: undefined
+      }
       reverse_payment: {
         Args: { _id: string; _reason: string }
         Returns: undefined
