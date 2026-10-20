@@ -36,6 +36,10 @@ BEGIN
   EXCEPTION WHEN unique_violation THEN NULL;
   END;
 
+  -- Act as a signed-in admin for the rollup checks (replace with any admin user_id)
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claim.sub', '106d2818-2c14-4442-8666-07cecfee2721', true);
+
   -- 4. Hourly rollup returns raw buckets
   SELECT count(*) INTO rows FROM public.usage_series(sub, 'hour', '2026-10-19 00:00+00', '2026-10-21 00:00+00');
   IF rows <> 3 THEN RAISE EXCEPTION 'hourly rollup expected 3 rows, got %', rows; END IF;
