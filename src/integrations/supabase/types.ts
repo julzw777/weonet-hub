@@ -346,6 +346,71 @@ export type Database = {
         }
         Relationships: []
       }
+      network_devices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          endpoint_ref: string
+          id: string
+          kind: string
+          last_health_at: string | null
+          last_health_detail: string | null
+          last_health_status: string
+          location_id: string | null
+          model: string | null
+          name: string
+          notes: string | null
+          routeros_version: string | null
+          updated_at: string
+          vendor: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          endpoint_ref: string
+          id?: string
+          kind?: string
+          last_health_at?: string | null
+          last_health_detail?: string | null
+          last_health_status?: string
+          location_id?: string | null
+          model?: string | null
+          name: string
+          notes?: string | null
+          routeros_version?: string | null
+          updated_at?: string
+          vendor?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          endpoint_ref?: string
+          id?: string
+          kind?: string
+          last_health_at?: string | null
+          last_health_detail?: string | null
+          last_health_status?: string
+          location_id?: string | null
+          model?: string | null
+          name?: string
+          notes?: string | null
+          routeros_version?: string | null
+          updated_at?: string
+          vendor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_devices_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_allocations: {
         Row: {
           amount: number
@@ -449,6 +514,59 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      router_actions: {
+        Row: {
+          action: string
+          attempts: number
+          created_at: string
+          detail: string | null
+          device_id: string
+          dry_run: boolean
+          duration_ms: number | null
+          id: string
+          idempotency_key: string
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          attempts?: number
+          created_at?: string
+          detail?: string | null
+          device_id: string
+          dry_run?: boolean
+          duration_ms?: number | null
+          id?: string
+          idempotency_key: string
+          requested_by: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          attempts?: number
+          created_at?: string
+          detail?: string | null
+          device_id?: string
+          dry_run?: boolean
+          duration_ms?: number | null
+          id?: string
+          idempotency_key?: string
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "router_actions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "network_devices"
             referencedColumns: ["id"]
           },
         ]
