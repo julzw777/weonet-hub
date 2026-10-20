@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { QueryState } from "@/components/ui/query-state";
 import { useAuth } from "@/lib/auth";
 import { agingBucket, collectionsSummary, canManageBilling, firstOfMonth, recurringBlockers } from "@/lib/billing-rules";
+import { ExchangeRates } from "@/components/exchange-rates";
 import { billingMoney, useBilling, useBillingSettings } from "@/lib/data/billing";
 
 export function CurrencyNotice() {
@@ -18,7 +19,7 @@ export function CurrencyNotice() {
   return <div className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" /><span>Currency <b>{s.data.currency_code} ({s.data.currency_symbol})</b> is a placeholder, not yet confirmed by Weonet. Amounts are recorded in it but it is not an approved production setting.</span></div>;
 }
 
-export function BillingSetup({ exportRows, customerName }: { exportRows: (n: string, r: unknown[][]) => void; customerName: (id: string | null) => string }) {
+export function BillingSetup({ exportRows, customerName, fx }: { exportRows: (n: string, r: unknown[][]) => void; customerName: (id: string | null) => string; fx?: (amount: number) => string | null }) {
   const { roles, hasRole } = useAuth();
   const writer = canManageBilling(roles);
   const qc = useQueryClient();
@@ -51,8 +52,8 @@ export function BillingSetup({ exportRows, customerName }: { exportRows: (n: str
   const rangeOk = !!from && !!to && from <= to;
   const coll = rangeOk ? collectionsSummary((billing.data?.invoices ?? []).map((i) => ({ ...i, total: Number(i.total) })), from, to) : null;
   const sym = s?.currency_symbol ?? "";
-  const exportCollections = () => { if (!coll) return; const g = (l: string, x: typeof coll.all) => [l, x.count, x.total, x.paid, x.credited, x.balance];
-    exportRows(`weonet-collections-${from}-to-${to}`, [["Collections report", `${from} to ${to}`, `Currency ${s?.currency_code ?? ""}${s && !s.currency_confirmed ? " (unconfirmed)" : ""}`], ["Group", "Invoices", "Invoiced", "Paid", "Credited", "Balance"], g("Paid", coll.paid), g("Partial", coll.partial), g("Outstanding (unpaid, overdue, partial)", coll.outstanding), g("All issued", coll.all), [], ["Invoice", "Customer", "Issued", "Due", "Status", "Total", "Paid", "Credited", "Balance"],
+  const exportCollections = () => { if (!coll) return; const g = (l: string, x: typeof coll.all) => [l, x.count, x.total, x.paid, x.credited, x.balance, fx?.(x.balance) ?? ""];
+    exportRows(`weonet-collections-${from}-to-${to}`, [["Collections report", `${from} to ${to}`, `Currency ${s?.currency_code ?? ""}${s && !s.currency_confirmed ? " (unconfirmed)" : ""}`], ["Group", "Invoices", "Invoiced", "Paid", "Credited", "Balance", fx ? "Balance in $ (display rate)" : ""], g("Paid", coll.paid), g("Partial", coll.partial), g("Outstanding (unpaid, overdue, partial)", coll.outstanding), g("All issued", coll.all), [], ["Invoice", "Customer", "Issued", "Due", "Status", "Total", "Paid", "Credited", "Balance"],
       ...(billing.data?.invoices ?? []).filter((i) => coll.invoices.includes(i as never)).map((i) => [i.number, customerName(i.customer_id), i.issued_at?.slice(0, 10), i.due_date, i.status, i.total, i.paid, i.credited, i.balance])]); };
   const buckets = ["current", "1-30", "31-60", "61-90", "90+"].map((b) => [b, open.filter((i) => agingBucket(i.due_date, today) === b).reduce((t, i) => t + i.balance, 0)] as const);
 
@@ -68,6 +69,7 @@ export function BillingSetup({ exportRows, customerName }: { exportRows: (n: str
         <div><Label htmlFor="due">Days until due (0–90)</Label><Input id="due" type="number" min="0" max="90" value={form.recurring_due_days} onChange={(e) => setForm({ ...form, recurring_due_days: e.target.value })} /></div>
         <div className="flex gap-2"><Button size="sm" type="submit" disabled={save.isPending}>Save</Button><Button size="sm" type="button" variant="ghost" onClick={() => setForm(null)}>Cancel</Button></div></form>}
     </section>
+    <ExchangeRates canSet={writer} baseSymbol={s?.currency_symbol ?? ""} />
     {writer && <section className="space-y-3 rounded-lg border border-border p-4"><h2 className="font-semibold">Recurring invoices (preview)</h2>
       <div className="flex flex-wrap items-end gap-3"><div><Label htmlFor="period">Period starting</Label><Input id="period" type="date" value={period} onChange={(e) => setPeriod(e.target.value)} /></div>
         <Button disabled={blockers.length > 0 || generate.isPending || !preview.data?.some((r) => !r.already_invoiced)} onClick={() => { if (confirm(`Create draft invoices for ${preview.data?.filter((r) => !r.already_invoiced).length} service(s)? They stay drafts until issued.`)) generate.mutate(); }}>{generate.isPending ? "Creating…" : "Create drafts"}</Button></div>
@@ -78,10 +80,10 @@ export function BillingSetup({ exportRows, customerName }: { exportRows: (n: str
     </section>}
     <section className="space-y-3 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Finance reports</h2><div className="flex gap-2"><Button size="sm" variant="outline" disabled={!billing.data} onClick={exportAging}><Download className="mr-2 h-4 w-4" />AR aging CSV</Button><Button size="sm" variant="outline" disabled={!billing.data} onClick={exportCredits}><Download className="mr-2 h-4 w-4" />Credit notes CSV</Button></div></div>
       <QueryState loading={billing.isLoading} error={billing.error} />
-      {billing.data && <div className="grid gap-3 sm:grid-cols-5">{buckets.map(([b, v]) => <div key={b} className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">{b === "current" ? "Not yet due" : `${b} days`}</p><p className="font-semibold tabular-nums">{billingMoney(v, s?.currency_symbol ?? "")}</p></div>)}</div>}
+      {billing.data && <div className="grid gap-3 sm:grid-cols-5">{buckets.map(([b, v]) => <div key={b} className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">{b === "current" ? "Not yet due" : `${b} days`}</p><p className="font-semibold tabular-nums">{billingMoney(v, s?.currency_symbol ?? "")}</p>{fx?.(v) && <p className="text-xs tabular-nums text-muted-foreground">≈ {fx(v)}</p>}</div>)}</div>}
       <div className="space-y-3 border-t border-border pt-4"><div className="flex flex-wrap items-end gap-3"><h3 className="w-full text-sm font-medium">Collections by issue date</h3><div><Label htmlFor="coll-from">From</Label><Input id="coll-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></div><div><Label htmlFor="coll-to">To</Label><Input id="coll-to" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></div><Button size="sm" variant="outline" disabled={!coll || !coll.all.count} onClick={exportCollections}><Download className="mr-2 h-4 w-4" />Collections CSV</Button></div>
         {!rangeOk && <p className="text-sm text-destructive">Choose a start date on or before the end date.</p>}
-        {coll && billing.data && (coll.all.count === 0 ? <p className="text-sm text-muted-foreground">No issued invoices in this period.</p> : <div className="grid gap-3 sm:grid-cols-3">{([["Paid", coll.paid, coll.paid.total], ["Partial", coll.partial, coll.partial.balance], ["Outstanding", coll.outstanding, coll.outstanding.balance]] as const).map(([l, g, v]) => <div key={l} className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">{l} · {g.count} invoice(s)</p><p className="font-semibold tabular-nums">{billingMoney(v, sym)}</p><p className="text-xs text-muted-foreground">{l === "Paid" ? "settled value" : "still owed"} · collected {billingMoney(g.paid, sym)}</p></div>)}</div>)}
+        {coll && billing.data && (coll.all.count === 0 ? <p className="text-sm text-muted-foreground">No issued invoices in this period.</p> : <div className="grid gap-3 sm:grid-cols-3">{([["Paid", coll.paid, coll.paid.total], ["Partial", coll.partial, coll.partial.balance], ["Outstanding", coll.outstanding, coll.outstanding.balance]] as const).map(([l, g, v]) => <div key={l} className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">{l} · {g.count} invoice(s)</p><p className="font-semibold tabular-nums">{billingMoney(v, sym)}</p>{fx?.(v) && <p className="text-xs tabular-nums text-muted-foreground">≈ {fx(v)}</p>}<p className="text-xs text-muted-foreground">{l === "Paid" ? "settled value" : "still owed"} · collected {billingMoney(g.paid, sym)}</p></div>)}</div>)}
         <p className="text-xs text-muted-foreground">Counts issued invoices by the date they were issued; drafts and voided invoices are excluded. Outstanding includes partial, unpaid and overdue.</p></div>
       <p className="text-xs text-muted-foreground">Aging uses the current currency and assumes one currency is in use.</p>
     </section>

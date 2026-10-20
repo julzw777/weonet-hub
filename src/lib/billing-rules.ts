@@ -57,3 +57,11 @@ export function collectionsSummary(rows: CollectionInvoice[], from: string, to: 
   };
   return { invoices: inRange, paid: group((i) => i.status === "paid"), partial: group((i) => i.status === "partial"), outstanding: group((i) => i.status === "unpaid" || i.status === "overdue" || i.status === "partial"), all: group(() => true) };
 }
+/** Display-only conversion; saved amounts are never changed. Rate = base units (Le) per 1 quote unit ($). */
+export const convertForDisplay = (amount: number, basePerQuote: number) => basePerQuote > 0 && Number.isFinite(basePerQuote) ? Math.round((amount / basePerQuote) * 100) / 100 : null;
+export function rateError(value: string) {
+  const n = Number(value);
+  if (!value.trim() || !Number.isFinite(n) || n <= 0) return "Enter a positive rate";
+  if (!/^\d+(\.\d{1,6})?$/.test(value.trim())) return "Use up to 6 decimals";
+  return null;
+}
