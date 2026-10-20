@@ -35,6 +35,11 @@ When enabled later, impactful actions must default to `dry_run: true` (already t
 4. **Reachability:** Supabase Edge Functions run in the cloud, so the router's HTTPS management port must be reachable from the internet. Lock it down with a RouterOS firewall rule that only allows the needed sources. You can also use a VPN or tunnel endpoint. Routers on private addresses (10.x, 192.168.x) are not reachable without such a tunnel. Never expose Winbox/SSH/API port 8728 publicly.
 5. Run "Health check". Until the secrets exist, the device shows **unconfigured** and lists the missing secret names.
 
+## Bandwidth usage collection
+- Customer bandwidth charts (Customers → Usage tab) read from the `usage_samples` table: one row per service per hour with download/upload byte counters. Staff can only read it; only the server's collection job can write, so figures cannot be typed in by hand.
+- The collection job itself is **not built yet**. It will be a server-side scheduled task that reads interface counters from each registered router (using the same `ROUTER_<REF>_*` secrets and the router-control adapter, never the browser) and writes hourly rows.
+- Weonet must supply: which router interface or PPPoE username maps to each service, and approval of the polling interval (hourly recommended). Until then the Usage tab shows an honest "no usage recorded" state — no simulated data.
+
 ## Known limitations
 - No live router has been contacted during development; all router behaviour is covered by unit tests with simulated responses.
 - Self-signed router certificates will fail TLS verification; use a trusted certificate.

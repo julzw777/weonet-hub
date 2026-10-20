@@ -968,6 +968,41 @@ export type Database = {
           },
         ]
       }
+      usage_samples: {
+        Row: {
+          bucket_start: string
+          created_at: string
+          id: string
+          rx_bytes: number
+          subscription_id: string
+          tx_bytes: number
+        }
+        Insert: {
+          bucket_start: string
+          created_at?: string
+          id?: string
+          rx_bytes?: number
+          subscription_id: string
+          tx_bytes?: number
+        }
+        Update: {
+          bucket_start?: string
+          created_at?: string
+          id?: string
+          rx_bytes?: number
+          subscription_id?: string
+          tx_bytes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_samples_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -1120,6 +1155,19 @@ export type Database = {
       set_reminder_status: {
         Args: { _id: string; _reason?: string; _status: string }
         Returns: undefined
+      }
+      usage_series: {
+        Args: {
+          _from: string
+          _granularity: string
+          _subscription_id: string
+          _to: string
+        }
+        Returns: {
+          bucket_start: string
+          rx_bytes: number
+          tx_bytes: number
+        }[]
       }
     }
     Enums: {

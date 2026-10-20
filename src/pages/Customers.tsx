@@ -16,6 +16,7 @@ import { canEditCustomers, canEditSubscriptions, nextStatuses, type SubStatus } 
 import { useCustomers, useSaveCustomer, useSubscriptions, usePlans, useCreateSubscription, useSetSubscriptionStatus, useSaveSubscription, type Customer, type Subscription } from "@/lib/data/hooks";
 import { CustomerInvoices } from "./Billing";
 import { useLoans, useMovements, useTickets } from "@/lib/data/ops";
+import { CustomerUsage } from "@/components/usage-chart";
 
 const empty = { full_name: "", email: "", phone: "", customer_type: "residential", status: "active", notes: "" };
 
@@ -211,6 +212,7 @@ export default function Customers() {
                     <TabsTrigger value="services">Services</TabsTrigger>
                     <TabsTrigger value="invoices">Invoices</TabsTrigger>
                     <TabsTrigger value="tickets">Tickets</TabsTrigger>
+                    <TabsTrigger value="usage">Usage</TabsTrigger>
                     <TabsTrigger value="equipment">Equipment & supplies</TabsTrigger>
                   </TabsList>
                   <TabsContent value="profile" className="space-y-3 pt-4 text-sm">
@@ -222,6 +224,7 @@ export default function Customers() {
                   <TabsContent value="services" className="pt-4"><Services customerId={selected.id} editable={canEditSubscriptions(roles)} /></TabsContent>
                   <TabsContent value="invoices" className="pt-4">{roles.some((r) => ["admin", "finance", "care", "readonly"].includes(r)) ? <CustomerInvoices customerId={selected.id} /> : <QueryState empty emptyText="Your role cannot view billing records." />}</TabsContent>
                   <TabsContent value="tickets" className="pt-4"><CustomerTickets customerId={selected.id} /></TabsContent>
+                  <TabsContent value="usage" className="pt-4"><CustomerUsage customerId={selected.id} /></TabsContent>
                   <TabsContent value="equipment" className="pt-4"><CustomerEquipment customerId={selected.id} /></TabsContent>
                 </Tabs>
               </CardContent>
