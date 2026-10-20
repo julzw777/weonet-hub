@@ -54,3 +54,4 @@ Orange Money, AfriMoney and Vult are recorded manually only. No webhook or API i
 - Not implemented on purpose (Weonet decisions): taxes/VAT, proration, late fees, grace periods, debit adjustments, discounts, reminder schedule/channels/provider, suspension.
 **Tests:** `npm test` (50 passed); `supabase/tests/recurring.sql` rollback checks passed.
 - Collections report: issued invoices filtered by issue date, grouped paid / partial / outstanding, CSV export (Recurring & reports tab).
+- Display-only $ conversion: `exchange_rates` history (Le per $1, set via `set_exchange_rate` by Finance/Admin); toggle on Billing Center; stored amounts unchanged.
