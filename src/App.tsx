@@ -15,6 +15,9 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Plans from "./pages/Plans";
 import Admin from "./pages/Admin";
+import Reports from "./pages/Reports";
+import { AuditLog } from "@/components/audit-log";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const queryClient = new QueryClient();
 const Soon = ({ t, d }: { t: string; d: string }) => <div className="p-6"><h1 className="text-2xl font-bold">{t}</h1><p className="mt-2 text-muted-foreground">{d}</p></div>;
@@ -31,7 +34,7 @@ const App = () => (
             <Route path="*" element={
               <RequireAuth>
                 <DashboardLayout>
-                  <Routes>
+                  <ErrorBoundary><Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/customers" element={<RequireAuth roles={["care", "finance", "tech", "noc", "readonly"]}><Customers /></RequireAuth>} />
                     <Route path="/billing" element={<RequireAuth roles={["finance", "readonly"]}><Billing /></RequireAuth>} />
@@ -40,10 +43,10 @@ const App = () => (
                     <Route path="/plans" element={<Plans />} />
                     <Route path="/inventory" element={<RequireAuth roles={["warehouse", "tech", "readonly"]}><Inventory /></RequireAuth>} />
                     <Route path="/hotspot" element={<Soon t="Hotspot" d="Hotspot vouchers are out of scope until Weonet confirms the hotspot controller and voucher rules." />} />
-                    <Route path="/reports" element={<Soon t="Reports" d="Reports will be built on real billing and ticket data in a later stage." />} />
-                    <Route path="/admin" element={<RequireAuth roles={["admin"]}><Admin /></RequireAuth>} />
+                    <Route path="/reports" element={<RequireAuth roles={["finance", "care", "noc", "tech", "readonly"]}><Reports /></RequireAuth>} />
+                    <Route path="/admin" element={<RequireAuth roles={["admin"]}><div className="space-y-6"><Admin /><AuditLog /></div></RequireAuth>} />
                     <Route path="*" element={<NotFound />} />
-                  </Routes>
+                  </Routes></ErrorBoundary>
                 </DashboardLayout>
               </RequireAuth>
             } />

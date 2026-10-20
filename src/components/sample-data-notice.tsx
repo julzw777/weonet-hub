@@ -1,0 +1,2 @@
+import { Info } from "lucide-react";
+export const SampleDataNotice = ({ what }: { what: string }) => <div className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-sm"><Info className="mt-0.5 h-4 w-4 shrink-0 text-info" /><span>{what} on this page are <b>sample data</b>, not saved Weonet records. Saved {what.toLowerCase()} arrive in Stage 4; controls here don't change anything.</span></div>;

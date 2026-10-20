@@ -1,3 +1,4 @@
+import { SampleDataNotice } from "@/components/sample-data-notice";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ export default function Inventory() {
 
   return (
     <div className="p-6 space-y-6">
+      <SampleDataNotice what="Stock, loans and supplies" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
