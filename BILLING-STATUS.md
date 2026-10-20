@@ -53,3 +53,4 @@ Orange Money, AfriMoney and Vult are recorded manually only. No webhook or API i
 - Recurring invoices: `preview_recurring_invoices(period)` lists active priced services (read-only). `generate_recurring_invoices(period)` creates **drafts only**, one per service per month (unique index plus a lock). It refuses to run until currency is confirmed and cadence/due days are set. Only monthly cadence is offered, at full plan price.
 - Not implemented on purpose (Weonet decisions): taxes/VAT, proration, late fees, grace periods, debit adjustments, discounts, reminder schedule/channels/provider, suspension.
 **Tests:** `npm test` (50 passed); `supabase/tests/recurring.sql` rollback checks passed.
+- Collections report: issued invoices filtered by issue date, grouped paid / partial / outstanding, CSV export (Recurring & reports tab).
