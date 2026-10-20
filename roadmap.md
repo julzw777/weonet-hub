@@ -8,5 +8,6 @@
 - [x] Credit notes, failed payments, service-linked invoices.
 - Stage 3 follow-up: adjustments policy, reminders, recurring billing and signed provider webhooks (provider credentials and billing rules required).
 - Stage 4: persistent tickets, inventory, loans and customer supply usage.
-- Stage 5: network, RADIUS and MikroTik (connection details required).
+- [x] Stage 5a: router registry, server-side MikroTik health check, action log (live checks need Weonet router secrets).
+- Stage 5b: RADIUS/PPPoE mapping, then disconnect/apply-profile with dry-run (Weonet mapping + policy required).
 - Stage 6: reports and operational hardening.
