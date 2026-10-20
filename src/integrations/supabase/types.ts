@@ -168,6 +168,39 @@ export type Database = {
           },
         ]
       }
+      exchange_rates: {
+        Row: {
+          base_code: string
+          base_per_quote: number
+          created_at: string
+          id: string
+          note: string | null
+          quote_code: string
+          quote_symbol: string
+          set_by: string
+        }
+        Insert: {
+          base_code?: string
+          base_per_quote: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          quote_code?: string
+          quote_symbol?: string
+          set_by: string
+        }
+        Update: {
+          base_code?: string
+          base_per_quote?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          quote_code?: string
+          quote_symbol?: string
+          set_by?: string
+        }
+        Relationships: []
+      }
       invoice_items: {
         Row: {
           amount: number
@@ -816,6 +849,10 @@ export type Database = {
       reverse_payment: {
         Args: { _id: string; _reason: string }
         Returns: undefined
+      }
+      set_exchange_rate: {
+        Args: { _base_per_quote: number; _note?: string }
+        Returns: string
       }
       set_invoice_state: {
         Args: { _id: string; _state: string }
