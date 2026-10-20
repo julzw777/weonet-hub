@@ -10,6 +10,8 @@ export const TICKET_CATEGORIES = ["support", "installation", "billing", "outage"
 export const ITEM_CATEGORIES = ["cable", "router", "ont", "onu", "connector", "consumable", "other"] as const;
 
 export const canEditTickets = (r: StaffRole[]) => has(r, ["care", "tech", "noc"]);
+/** Only admins may delete tickets (e.g. duplicates); tickets with logged supplies are blocked by the database. */
+export const canDeleteTickets = (r: StaffRole[]) => r.includes("admin");
 export const canManageItems = (r: StaffRole[]) => has(r, ["warehouse"]);
 export const canUseSupplies = (r: StaffRole[]) => has(r, ["warehouse", "tech"]);
 

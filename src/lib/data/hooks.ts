@@ -52,6 +52,9 @@ export const useCreateSubscription = () =>
 export const useSetSubscriptionStatus = () =>
   useSave<{ id: string; status: string }>("subscriptions", ({ id, status }) => supabase.from("subscriptions").update({ status }).eq("id", id));
 
+export const useSaveSubscription = () =>
+  useSave<TablesUpdate<"subscriptions"> & { id: string }>("subscriptions", ({ id, ...v }) => supabase.from("subscriptions").update(v).eq("id", id));
+
 export type StaffRow = Tables<"staff_profiles"> & { roles: StaffRole[] };
 export const useStaff = () =>
   useQuery({
