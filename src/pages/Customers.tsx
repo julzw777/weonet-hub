@@ -15,6 +15,7 @@ import { useAuth, formatMoney } from "@/lib/auth";
 import { canEditCustomers, canEditSubscriptions, nextStatuses, type SubStatus } from "@/lib/rules";
 import { useCustomers, useSaveCustomer, useSubscriptions, usePlans, useCreateSubscription, useSetSubscriptionStatus, type Customer } from "@/lib/data/hooks";
 import { CustomerInvoices } from "./Billing";
+import { useLoans, useMovements, useTickets } from "@/lib/data/ops";
 
 const empty = { full_name: "", email: "", phone: "", customer_type: "residential", status: "active", notes: "" };
 
@@ -168,7 +169,7 @@ export default function Customers() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="profile">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="flex w-full flex-wrap h-auto">
                     <TabsTrigger value="profile">Profile</TabsTrigger>
                     <TabsTrigger value="services">Services</TabsTrigger>
                     <TabsTrigger value="invoices">Invoices</TabsTrigger>
@@ -192,6 +193,30 @@ export default function Customers() {
         </Card>
       </div>
       <CustomerDialog open={dialog.open} initial={dialog.edit} onClose={() => setDialog({ open: false })} />
+    </div>
+  );
+}
+
+function CustomerTickets({ customerId }: { customerId: string }) {
+  const { data = [], isLoading, error } = useTickets();
+  const list = data.filter((t) => t.customer_id === customerId);
+  if (isLoading || error || !list.length) return <QueryState loading={isLoading} error={error as Error | null} empty emptyText="No tickets for this customer." />;
+  return <div className="space-y-2 text-sm">{list.map((t) => (
+    <div key={t.id} className="flex justify-between rounded-md border p-2"><span>{t.number} · {t.subject}</span><StatusBadge status={t.status.replace("_", "-")} /></div>))}</div>;
+}
+
+function CustomerEquipment({ customerId }: { customerId: string }) {
+  const loans = useLoans(), moves = useMovements(customerId);
+  const mine = (loans.data ?? []).filter((l) => l.customer_id === customerId);
+  const used = (moves.data ?? []).filter((m) => m.kind === "usage");
+  return (
+    <div className="space-y-4 text-sm">
+      <div><h4 className="mb-2 font-medium">Equipment on loan</h4>
+        {mine.length ? mine.map((l) => <div key={l.id} className="flex justify-between rounded-md border p-2"><span>{l.inventory_items?.name} · {l.serial}</span><StatusBadge status={l.status.replace("_", "-")} /></div>)
+          : <QueryState loading={loans.isLoading} error={loans.error as Error | null} empty emptyText="No equipment loaned." />}</div>
+      <div><h4 className="mb-2 font-medium">Supplies used</h4>
+        {used.length ? used.map((m) => <div key={m.id} className="flex justify-between rounded-md border p-2"><span>{-Number(m.quantity)} {m.inventory_items?.unit} {m.inventory_items?.name}{m.note && ` — ${m.note}`}</span><span className="text-muted-foreground">{new Date(m.created_at).toLocaleDateString()}</span></div>)
+          : <QueryState loading={moves.isLoading} error={moves.error as Error | null} empty emptyText="No supplies recorded." />}</div>
     </div>
   );
 }
