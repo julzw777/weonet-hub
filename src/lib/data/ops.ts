@@ -41,6 +41,8 @@ export const useSaveTicket = () => useOp<Partial<Ticket> & { id?: string }>(({ i
   id ? db.from("tickets").update(v).eq("id", id) : db.from("tickets").insert(v), ["tickets"]);
 export const useSaveItem = () => useOp<Partial<Item> & { id?: string }>(({ id, stock_qty: _s, ...v }) =>
   id ? db.from("inventory_items").update(v).eq("id", id) : db.from("inventory_items").insert(v), ["items"]);
+export const useDeleteTicket = () => useOp<{ id: string }>((v) => db.from("tickets").delete().eq("id", v.id), ["tickets"]);
+export const useDeleteItem = () => useOp<{ id: string }>((v) => db.from("inventory_items").delete().eq("id", v.id), ["items"]);
 const STOCK = ["items", "movements", "loans"];
 export const useAdjustStock = () => useOp<{ item: string; qty: number; kind: "receive" | "adjust"; note: string }>((v) =>
   db.rpc("adjust_stock", { _item_id: v.item, _quantity: v.qty, _kind: v.kind, _note: v.note }), STOCK);

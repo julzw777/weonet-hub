@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canEditTickets, canManageItems, canMoveTicket, canUseSupplies, stockChangeError, stockLevel, usageByItem } from "./ops-rules";
+import { canDeleteTickets, canEditTickets, canManageItems, canMoveTicket, canUseSupplies, stockChangeError, stockLevel, usageByItem } from "./ops-rules";
 
 describe("ticket and stock rules", () => {
   it("closed tickets cannot be reopened", () => {
@@ -10,6 +10,11 @@ describe("ticket and stock rules", () => {
     expect(canEditTickets(["readonly"])).toBe(false);
     expect(canEditTickets(["finance"])).toBe(false);
     expect(canEditTickets(["care"])).toBe(true);
+  });
+  it("only admins can delete tickets", () => {
+    expect(canDeleteTickets(["admin"])).toBe(true);
+    expect(canDeleteTickets(["care"])).toBe(false);
+    expect(canDeleteTickets(["noc", "tech"])).toBe(false);
   });
   it("only warehouse/admin manage items; tech can use supplies", () => {
     expect(canManageItems(["tech"])).toBe(false);
