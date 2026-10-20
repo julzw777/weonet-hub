@@ -1,130 +1,40 @@
+import { useQuery } from "@tanstack/react-query";
+import { Users, Wallet, Clock, Router, Ticket } from "lucide-react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { KPICard } from "@/components/ui/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, DollarSign, Clock, Zap, Ticket } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { mockTickets, mockCustomers, mockInvoices } from "@/lib/mock-data";
+import { QueryState } from "@/components/ui/query-state";
+import { useAuth } from "@/lib/auth";
+import { useBilling, useBillingSettings, billingMoney } from "@/lib/data/billing";
+import { percent } from "@/lib/report-rules";
 
 export default function Dashboard() {
-  // Calculate KPIs from mock data
-  const activeSubscriptions = mockCustomers.filter(c => c.status === 'active').length;
-  const monthlyRevenue = mockInvoices
-    .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + inv.amount, 0);
-  const overdueAmount = mockInvoices
-    .filter(inv => inv.status === 'overdue')
-    .reduce((sum, inv) => sum + inv.amount, 0);
-  const openTickets = mockTickets.filter(t => t.status === 'open').length;
-
-  const recentTickets = mockTickets.slice(0, 5);
-
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back! Here's what's happening with your network today.
-        </p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <KPICard
-          title="Active Subscribers"
-          value={activeSubscriptions}
-          description="Total active customers"
-          icon={Users}
-          trend={{ value: 5.2, isPositive: true }}
-        />
-        <KPICard
-          title="Monthly Revenue"
-          value={`$${monthlyRevenue.toLocaleString()}`}
-          description="Current month MRR"
-          icon={DollarSign}
-          trend={{ value: 8.1, isPositive: true }}
-        />
-        <KPICard
-          title="AR Aging"
-          value={`$${overdueAmount.toLocaleString()}`}
-          description="Overdue invoices"
-          icon={Clock}
-          trend={{ value: -2.3, isPositive: false }}
-        />
-        <KPICard
-          title="Network Uptime"
-          value="99.2%"
-          description="Last 30 days"
-          icon={Zap}
-          trend={{ value: 0.5, isPositive: true }}
-        />
-        <KPICard
-          title="Open Tickets"
-          value={openTickets}
-          description="Requires attention"
-          icon={Ticket}
-          trend={{ value: -12.5, isPositive: true }}
-        />
-      </div>
-
-      {/* Content Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Recent Tickets */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5" />
-              Recent Tickets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentTickets.map((ticket) => (
-                <div key={ticket.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-sm">{ticket.title}</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {ticket.id} • Created {new Date(ticket.createdDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={ticket.priority === 'high' ? 'destructive' : ticket.priority === 'medium' ? 'warning' : 'default'}>
-                      {ticket.priority}
-                    </Badge>
-                    <Badge variant={ticket.status === 'open' ? 'info' : 'warning'}>
-                      {ticket.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Network Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Core Routers</span>
-              <Badge variant="success">4/4 Online</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Access Points</span>
-              <Badge variant="warning">23/25 Online</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Fiber Distribution</span>
-              <Badge variant="success">12/12 Online</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Customer ONTs</span>
-              <Badge variant="success">1,247/1,250 Online</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+  const { hasRole } = useAuth();
+  const canBilling = hasRole("finance", "care", "readonly");
+  const canNetwork = hasRole("noc", "tech", "readonly");
+  const subs = useQuery({ queryKey: ["dash-subs"], queryFn: async () => { const { count, error } = await supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "active"); if (error) throw new Error(error.message); return count ?? 0; } });
+  const devices = useQuery({ queryKey: ["report-devices"], enabled: canNetwork, queryFn: async () => { const { data, error } = await supabase.from("network_devices").select("last_health_status"); if (error) throw new Error(error.message); return data; } });
+  const billing = useBilling();
+  const settings = useBillingSettings();
+  const sym = settings.data?.currency_symbol ?? "";
+  const month = new Date().toISOString().slice(0, 7);
+  const collected = billing.data?.allocations.filter((a) => !a.reversed && a.created_at.startsWith(month)).reduce((t, a) => t + Number(a.amount), 0);
+  const overdue = billing.data?.invoices.filter((i) => i.status === "overdue").reduce((t, i) => t + i.balance, 0);
+  const healthy = devices.data ? percent(devices.data.filter((d) => d.last_health_status === "healthy").length, devices.data.length) : null;
+  const money = (v: number | undefined) => (v === undefined ? "—" : billingMoney(v, sym));
+  return <div className="space-y-6">
+    <div><h1 className="text-3xl font-bold text-foreground">Dashboard</h1><p className="text-muted-foreground">Live figures from saved Weonet records.</p></div>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <KPICard title="Active services" value={subs.isLoading ? "…" : subs.error ? "—" : subs.data!} description="Services with status active" icon={Users} />
+      <KPICard title="Collected this month" value={canBilling ? money(collected) : "No access"} description="Payments allocated this month" icon={Wallet} />
+      <KPICard title="Overdue balance" value={canBilling ? money(overdue) : "No access"} description="Issued invoices past due" icon={Clock} />
+      <KPICard title="Routers healthy" value={!canNetwork ? "No access" : healthy === null ? (devices.data ? "No devices" : "…") : `${healthy}%`} description="At last health check" icon={Router} />
+      <KPICard title="Open tickets" value="Not tracked yet" description="Saved tickets arrive in Stage 4" icon={Ticket} />
     </div>
-  );
+    {canBilling && <Card><CardHeader><CardTitle>Recent invoices</CardTitle></CardHeader><CardContent className="space-y-2">
+      <QueryState loading={billing.isLoading} error={billing.error} empty={!!billing.data && !billing.data.invoices.length} emptyText="No invoices yet." />
+      {billing.data?.invoices.slice(0, 5).map((i) => <div key={i.id} className="flex justify-between border-b border-border py-2 text-sm"><span>{i.number} · {i.status}</span><span className="tabular-nums">{billingMoney(Number(i.total), i.currency_symbol)}</span></div>)}
+      <Link to="/billing" className="text-sm text-primary">Open Billing Center</Link></CardContent></Card>}
+  </div>;
 }

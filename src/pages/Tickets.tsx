@@ -1,3 +1,4 @@
+import { SampleDataNotice } from "@/components/sample-data-notice";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ export default function Tickets() {
 
   return (
     <div className="space-y-6">
+      <SampleDataNotice what="Tickets" />
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
