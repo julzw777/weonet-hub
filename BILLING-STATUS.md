@@ -41,3 +41,7 @@ Orange Money, AfriMoney and Vult are recorded manually only. No webhook or API i
 - Currency: SLE / Le is a configured placeholder chosen during setup, not a confirmed business rule.
 - Invoice cadence (monthly/prepaid), proration, taxes/VAT, late fees, adjustments policy, reminder schedule and channels.
 - Suspension/disconnection policy — no automation exists.
+
+## Increment 2026-10-20 (reminder history)
+- `invoice_reminders` table: channel, recipient, status (logged → sent → delivered, or failed with reason), sent/delivered/failed timestamps, recorded_by. Read: Admin/Finance/Care/ReadOnly; write only via `log_invoice_reminder()` / `set_reminder_status()` (Finance/Admin, issued invoices only, audited).
+- Nothing is sent automatically; staff record reminders they sent by hand. Automatic sending requires Weonet to confirm schedule, channels, wording and a delivery provider.
