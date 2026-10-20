@@ -1,167 +1,108 @@
-import { SampleDataNotice } from "@/components/sample-data-notice";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Clock, User } from "lucide-react";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { mockTickets, mockCustomers } from "@/lib/mock-data";
+import { QueryState } from "@/components/ui/query-state";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
+import { useCustomers } from "@/lib/data/hooks";
+import { useSaveTicket, useTickets, type Ticket } from "@/lib/data/ops";
+import { canEditTickets, canMoveTicket, TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES, type TicketStatus } from "@/lib/ops-rules";
 
-interface TicketColumn {
-  id: string;
-  title: string;
-  status: string;
-  tickets: typeof mockTickets;
-}
+const label = (s: string) => s.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase());
+const prioVariant = (p: string) => (p === "urgent" || p === "high" ? "destructive" : p === "medium" ? "default" : "secondary");
 
 export default function Tickets() {
-  const [columns] = useState<TicketColumn[]>([
-    {
-      id: 'open',
-      title: 'Open',
-      status: 'open',
-      tickets: mockTickets.filter(t => t.status === 'open')
-    },
-    {
-      id: 'in-progress',
-      title: 'In Progress',
-      status: 'in-progress',
-      tickets: mockTickets.filter(t => t.status === 'in-progress')
-    },
-    {
-      id: 'resolved',
-      title: 'Resolved',
-      status: 'resolved',
-      tickets: mockTickets.filter(t => t.status === 'resolved')
-    },
-    {
-      id: 'closed',
-      title: 'Closed',
-      status: 'closed',
-      tickets: mockTickets.filter(t => t.status === 'closed')
-    }
-  ]);
+  const { roles } = useAuth();
+  const editable = canEditTickets(roles);
+  const { data = [], isLoading, error } = useTickets();
+  const save = useSaveTicket();
+  const { toast } = useToast();
+  const [open, setOpen] = useState<Partial<Ticket> | null>(null);
 
-  const getSLAStatus = (deadline: string) => {
-    const now = new Date();
-    const slaDate = new Date(deadline);
-    const hoursRemaining = (slaDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
-    if (hoursRemaining < 0) return { status: 'overdue', color: 'destructive', text: 'Overdue' };
-    if (hoursRemaining < 4) return { status: 'critical', color: 'destructive', text: `${Math.floor(hoursRemaining)}h left` };
-    if (hoursRemaining < 24) return { status: 'warning', color: 'warning', text: `${Math.floor(hoursRemaining)}h left` };
-    return { status: 'ok', color: 'success', text: `${Math.floor(hoursRemaining / 24)}d left` };
-  };
+  const move = (t: Ticket, status: TicketStatus) =>
+    save.mutate({ id: t.id, status }, { onError: (e) => toast({ title: "Not updated", description: e.message, variant: "destructive" }) });
 
   return (
     <div className="space-y-6">
-      <SampleDataNotice what="Tickets" />
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Tickets</h1>
-          <p className="text-muted-foreground">Track and manage customer support tickets</p>
+          <h1 className="text-3xl font-bold tracking-tight">Support Tickets</h1>
+          <p className="text-muted-foreground">Customer issues, installations and outages</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Ticket
-        </Button>
+        {editable && <Button onClick={() => setOpen({ priority: "medium", category: "support" })}><Plus className="mr-2 h-4 w-4" />New ticket</Button>}
       </div>
-
-      {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {columns.map((column) => (
-          <Card key={column.id}>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold">{column.tickets.length}</div>
-              <p className="text-xs text-muted-foreground">{column.title} Tickets</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Kanban Board */}
-      <div className="grid gap-6 md:grid-cols-4">
-        {columns.map((column) => (
-          <Card key={column.id} className="h-fit">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center justify-between">
-                {column.title}
-                <Badge variant="secondary">{column.tickets.length}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {column.tickets.map((ticket) => {
-                const customer = mockCustomers.find(c => c.id === ticket.customerId);
-                const sla = getSLAStatus(ticket.slaDeadline);
-                
-                return (
-                  <Card key={ticket.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        {/* Ticket Header */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm leading-tight">{ticket.title}</h4>
-                            <p className="text-xs text-muted-foreground mt-1">{ticket.id}</p>
-                          </div>
-                          <Badge
-                            variant={
-                              ticket.priority === 'critical' ? 'destructive' :
-                              ticket.priority === 'high' ? 'destructive' :
-                              ticket.priority === 'medium' ? 'warning' : 'default'
-                            }
-                            className="text-xs"
-                          >
-                            {ticket.priority}
-                          </Badge>
-                        </div>
-
-                        {/* Customer Info */}
-                        <div className="text-xs text-muted-foreground">
-                          <User className="h-3 w-3 inline mr-1" />
-                          {customer?.name}
-                        </div>
-
-                        {/* Category Badge */}
-                        <Badge variant="outline" className="text-xs">
-                          {ticket.category}
-                        </Badge>
-
-                        {/* SLA Countdown */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1 text-xs">
-                            <Clock className="h-3 w-3" />
-                            <Badge variant={sla.color as any} className="text-xs">
-                              {sla.text}
-                            </Badge>
-                          </div>
-                          {ticket.assignee && (
-                            <div className="text-xs text-muted-foreground">
-                              {ticket.assignee}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Creation Date */}
-                        <div className="text-xs text-muted-foreground">
-                          Created: {new Date(ticket.createdDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-              
-              {column.tickets.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No {column.title.toLowerCase()} tickets
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <QueryState loading={isLoading} error={error as Error | null} empty={!isLoading && !error && data.length === 0} emptyText="No tickets yet." />
+      {data.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5">
+          {TICKET_STATUSES.map((s) => {
+            const list = data.filter((t) => t.status === s);
+            return (
+              <Card key={s}>
+                <CardHeader className="pb-3"><CardTitle className="flex justify-between text-sm">{label(s)}<Badge variant="secondary">{list.length}</Badge></CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {list.map((t) => (
+                    <div key={t.id} className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
+                      <button className="text-left font-medium hover:underline" onClick={() => setOpen(t)}>{t.subject}</button>
+                      <div className="flex flex-wrap gap-1"><Badge variant={prioVariant(t.priority)}>{t.priority}</Badge><Badge variant="outline">{t.category}</Badge></div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground"><User className="h-3 w-3" />{t.customers?.full_name ?? "No customer"}</div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{t.number} · {new Date(t.created_at).toLocaleDateString()}</div>
+                      {editable && t.status !== "closed" && (
+                        <Select value="" onValueChange={(v) => move(t, v as TicketStatus)}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Move to…" /></SelectTrigger>
+                          <SelectContent>{TICKET_STATUSES.filter((x) => canMoveTicket(s, x)).map((x) => <SelectItem key={x} value={x}>{label(x)}</SelectItem>)}</SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      {open && <TicketDialog ticket={open} editable={editable} onClose={() => setOpen(null)} />}
     </div>
+  );
+}
+
+function TicketDialog({ ticket, editable, onClose }: { ticket: Partial<Ticket>; editable: boolean; onClose: () => void }) {
+  const [v, setV] = useState(ticket);
+  const { data: customers = [] } = useCustomers();
+  const save = useSaveTicket();
+  const { toast } = useToast();
+  const ro = !editable || ticket.status === "closed";
+  const submit = () => save.mutate(
+    { id: v.id, subject: v.subject, description: v.description, priority: v.priority, category: v.category, customer_id: v.customer_id ?? null },
+    { onSuccess: () => { toast({ title: v.id ? "Ticket updated" : "Ticket created" }); onClose(); },
+      onError: (e) => toast({ title: "Not saved", description: e.message, variant: "destructive" }) });
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{v.id ? v.number : "New ticket"}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Subject</Label><Input disabled={ro} maxLength={200} value={v.subject ?? ""} onChange={(e) => setV({ ...v, subject: e.target.value })} /></div>
+          <div><Label>Customer</Label>
+            <Select disabled={ro} value={v.customer_id ?? "none"} onValueChange={(x) => setV({ ...v, customer_id: x === "none" ? null : x })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="none">No customer</SelectItem>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} ({c.account_number})</SelectItem>)}</SelectContent>
+            </Select></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Priority</Label><Select disabled={ro} value={v.priority} onValueChange={(x) => setV({ ...v, priority: x })}><SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{TICKET_PRIORITIES.map((p) => <SelectItem key={p} value={p}>{label(p)}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>Category</Label><Select disabled={ro} value={v.category} onValueChange={(x) => setV({ ...v, category: x })}><SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{TICKET_CATEGORIES.map((p) => <SelectItem key={p} value={p}>{label(p)}</SelectItem>)}</SelectContent></Select></div>
+          </div>
+          <div><Label>Description</Label><Textarea disabled={ro} rows={4} value={v.description ?? ""} onChange={(e) => setV({ ...v, description: e.target.value })} /></div>
+          {!ro && <Button className="w-full" disabled={save.isPending || !v.subject?.trim()} onClick={submit}>{save.isPending ? "Saving…" : "Save"}</Button>}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
