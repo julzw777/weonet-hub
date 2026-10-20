@@ -6,7 +6,8 @@
 
 ## Later stages (not part of this continuation slice)
 - [x] Credit notes, failed payments, service-linked invoices.
-- Stage 3 follow-up: adjustments policy, reminders, recurring billing and signed provider webhooks (provider credentials and billing rules required).
+- [x] Stage 3 follow-up: reminder log, recurring preview + gated draft generation, AR aging / credit exports.
+- Billing decisions pending from Weonet: currency confirmation, cadence, due days, taxes, proration, fees, reminders, suspension; signed provider webhooks.
 - Stage 4: persistent tickets, inventory, loans and customer supply usage.
 - [x] Stage 5a: router registry, server-side MikroTik health check, action log (live checks need Weonet router secrets).
 - Stage 5b: RADIUS/PPPoE mapping, then disconnect/apply-profile with dry-run (Weonet mapping + policy required).
