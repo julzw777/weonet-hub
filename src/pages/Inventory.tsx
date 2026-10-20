@@ -14,7 +14,7 @@ import { Package, Users, AlertTriangle, Plus, Download, Search } from "lucide-re
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useCustomers } from "@/lib/data/hooks";
-import { useAdjustStock, useItems, useLoanEquipment, useLoans, useMovements, useRecordUsage, useReturnEquipment, useSaveItem, useTickets, type Item } from "@/lib/data/ops";
+import { useAdjustStock, useDeleteItem, useItems, useLoanEquipment, useLoans, useMovements, useRecordUsage, useReturnEquipment, useSaveItem, useTickets, type Item } from "@/lib/data/ops";
 import { canManageItems, canUseSupplies, ITEM_CATEGORIES, stockChangeError, stockLevel } from "@/lib/ops-rules";
 
 type Dlg = { type: "item"; item: Partial<Item> } | { type: "stock"; item: Item } | { type: "usage"; item?: Item } | { type: "loan"; item?: Item } | null;
@@ -29,6 +29,10 @@ export default function Inventory() {
   const manage = canManageItems(roles), use = canUseSupplies(roles);
   const items = useItems(), loans = useLoans(), moves = useMovements();
   const ret = useReturnEquipment();
+  const del = useDeleteItem();
+  const doDelete = (i: Item) =>
+    confirm(`Delete item "${i.name}" (${i.sku})? Items with stock history or loans cannot be deleted.`) &&
+    del.mutate({ id: i.id }, { onSuccess: () => toast({ title: "Item deleted" }), onError: (e) => toast({ title: "Not deleted", description: e.message, variant: "destructive" }) });
   const { toast } = useToast();
   const [q, setQ] = useState("");
   const [dlg, setDlg] = useState<Dlg>(null);
@@ -74,6 +78,7 @@ export default function Inventory() {
                   <TableCell className="space-x-1 text-right">
                     {manage && <Button size="sm" variant="ghost" onClick={() => setDlg({ type: "stock", item: i })}>Stock</Button>}
                     {manage && <Button size="sm" variant="ghost" onClick={() => setDlg({ type: "item", item: i })}>Edit</Button>}
+                    {manage && <Button size="sm" variant="ghost" className="text-destructive" disabled={del.isPending} onClick={() => doDelete(i)}>Delete</Button>}
                   </TableCell>
                 </TableRow>))}</TableBody></Table>}
           </CardContent></Card>

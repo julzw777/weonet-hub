@@ -7,13 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Clock, User } from "lucide-react";
+import { Plus, Clock, User, Trash2 } from "lucide-react";
 import { QueryState } from "@/components/ui/query-state";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useCustomers } from "@/lib/data/hooks";
-import { useSaveTicket, useTickets, type Ticket } from "@/lib/data/ops";
-import { canEditTickets, canMoveTicket, TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES, type TicketStatus } from "@/lib/ops-rules";
+import { useDeleteTicket, useSaveTicket, useTickets, type Ticket } from "@/lib/data/ops";
+import { canDeleteTickets, canEditTickets, canMoveTicket, TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES, type TicketStatus } from "@/lib/ops-rules";
 
 const label = (s: string) => s.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase());
 const prioVariant = (p: string) => (p === "urgent" || p === "high" ? "destructive" : p === "medium" ? "default" : "secondary");
@@ -21,13 +21,18 @@ const prioVariant = (p: string) => (p === "urgent" || p === "high" ? "destructiv
 export default function Tickets() {
   const { roles } = useAuth();
   const editable = canEditTickets(roles);
+  const deletable = canDeleteTickets(roles);
   const { data = [], isLoading, error } = useTickets();
   const save = useSaveTicket();
+  const del = useDeleteTicket();
   const { toast } = useToast();
   const [open, setOpen] = useState<Partial<Ticket> | null>(null);
 
   const move = (t: Ticket, status: TicketStatus) =>
     save.mutate({ id: t.id, status }, { onError: (e) => toast({ title: "Not updated", description: e.message, variant: "destructive" }) });
+  const remove = (t: Ticket) =>
+    confirm(`Delete ticket ${t.number} ("${t.subject}")? This cannot be undone.`) &&
+    del.mutate({ id: t.id }, { onSuccess: () => toast({ title: "Ticket deleted" }), onError: (e) => toast({ title: "Not deleted", description: e.message, variant: "destructive" }) });
 
   return (
     <div className="space-y-6">
@@ -58,6 +63,11 @@ export default function Tickets() {
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Move to…" /></SelectTrigger>
                           <SelectContent>{TICKET_STATUSES.filter((x) => canMoveTicket(s, x)).map((x) => <SelectItem key={x} value={x}>{label(x)}</SelectItem>)}</SelectContent>
                         </Select>
+                      )}
+                      {deletable && (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" disabled={del.isPending} onClick={() => remove(t)}>
+                          <Trash2 className="mr-1 h-3 w-3" />Delete
+                        </Button>
                       )}
                     </div>
                   ))}
