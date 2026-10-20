@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Plus, Pencil, Lock } from "lucide-react";
+import { Activity, Plus, Pencil, Lock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
@@ -56,6 +56,10 @@ export default function Network() {
     if (error) throw new Error((await (error as { context?: Response }).context?.json?.().catch(() => null))?.error ?? error.message);
     return data.action as Tables<"router_actions">;
   }, onSuccess: (a) => { qc.invalidateQueries({ queryKey: ["network_devices"] }); qc.invalidateQueries({ queryKey: ["router_actions"] }); (a.status === "succeeded" ? toast.success : toast.error)(`Health check ${a.status}: ${a.detail ?? ""}`); }, onError: (e) => toast.error(e.message) });
+  const remove = useMutation({ mutationFn: async (d: Device) => {
+    if (!confirm(`Remove device "${d.name}"? Devices with action history cannot be removed — disable them instead.`)) return;
+    unwrap(await supabase.from("network_devices").delete().eq("id", d.id));
+  }, onSuccess: () => { qc.invalidateQueries({ queryKey: ["network_devices"] }); toast.success("Device removed"); }, onError: (e) => toast.error(e.message) });
   const list = devices.data ?? [];
   const count = (s: string) => list.filter((d) => d.last_health_status === s).length;
   const name = (id: string) => list.find((d) => d.id === id)?.name ?? id.slice(0, 8);
@@ -70,7 +74,7 @@ export default function Network() {
         <div className="min-w-0 space-y-1"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{d.name}</p><StatusBadge status={d.last_health_status} />{!d.enabled && <StatusBadge status="inactive" />}</div>
           <p className="text-xs text-muted-foreground">{d.kind.toUpperCase()} · {d.model || "Model not set"} · {d.locations?.name ?? "No site"} · ref <code>{d.endpoint_ref}</code>{d.routeros_version && ` · RouterOS ${d.routeros_version}`}</p>
           <p className="break-words text-xs text-muted-foreground">{d.last_health_at ? `Last check ${new Date(d.last_health_at).toLocaleString()}: ${d.last_health_detail ?? ""}` : "Never checked"}</p></div>
-        {canControl && <div className="flex gap-2"><Button size="sm" variant="outline" disabled={!d.enabled || check.isPending} onClick={() => check.mutate(d.id)}><Activity className="mr-2 h-4 w-4" />Health check</Button><Button size="sm" variant="ghost" aria-label="Edit device" onClick={() => setEditing(d)}><Pencil className="h-4 w-4" /></Button></div>}
+        {canControl && <div className="flex gap-2"><Button size="sm" variant="outline" disabled={!d.enabled || check.isPending} onClick={() => check.mutate(d.id)}><Activity className="mr-2 h-4 w-4" />Health check</Button><Button size="sm" variant="ghost" aria-label="Edit device" onClick={() => setEditing(d)}><Pencil className="h-4 w-4" /></Button><Button size="sm" variant="ghost" aria-label="Remove device" className="text-destructive" disabled={remove.isPending} onClick={() => remove.mutate(d)}><Trash2 className="h-4 w-4" /></Button></div>}
       </div>)}
     </CardContent></Card>
     <Card><CardHeader><CardTitle>Router commands</CardTitle></CardHeader><CardContent className="space-y-3">{(["disconnect_subscriber", "apply_profile"] as const).map((a) => <div key={a} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border p-4"><div className="min-w-0"><p className="font-medium">{a === "disconnect_subscriber" ? "Disconnect subscriber" : "Apply service profile"}</p><p className="text-xs text-muted-foreground">{ACTIONS[a].reason}</p></div><Button size="sm" variant="outline" disabled><Lock className="mr-2 h-4 w-4" />Unavailable</Button></div>)}</CardContent></Card>

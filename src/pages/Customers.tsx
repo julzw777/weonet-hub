@@ -13,7 +13,7 @@ import { QueryState } from "@/components/ui/query-state";
 import { toast } from "sonner";
 import { useAuth, formatMoney } from "@/lib/auth";
 import { canEditCustomers, canEditSubscriptions, nextStatuses, type SubStatus } from "@/lib/rules";
-import { useCustomers, useSaveCustomer, useSubscriptions, usePlans, useCreateSubscription, useSetSubscriptionStatus, type Customer } from "@/lib/data/hooks";
+import { useCustomers, useSaveCustomer, useSubscriptions, usePlans, useCreateSubscription, useSetSubscriptionStatus, useSaveSubscription, type Customer, type Subscription } from "@/lib/data/hooks";
 import { CustomerInvoices } from "./Billing";
 import { useLoans, useMovements, useTickets } from "@/lib/data/ops";
 
@@ -66,6 +66,7 @@ function Services({ customerId, editable }: { customerId: string; editable: bool
   const create = useCreateSubscription();
   const setStatus = useSetSubscriptionStatus();
   const [planId, setPlanId] = useState("");
+  const [editing, setEditing] = useState<Subscription | null>(null);
   const activePlans = (plans.data ?? []).filter((p) => p.active);
   return (
     <div className="space-y-4">
@@ -88,9 +89,13 @@ function Services({ customerId, editable }: { customerId: string; editable: bool
             <p className="text-sm text-muted-foreground">
               {s.service_plans ? formatMoney(Number(s.service_plans.monthly_price)) + "/month" : ""} · Started {s.start_date ?? "—"}{s.end_date ? ` · Ended ${s.end_date}` : ""}
             </p>
+            {(s.pppoe_username || s.ip_address || s.vlan) && (
+              <p className="text-xs text-muted-foreground">{[s.pppoe_username && `PPPoE ${s.pppoe_username}`, s.ip_address, s.vlan && `VLAN ${s.vlan}`].filter(Boolean).join(" · ")}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={s.status} />
+            {editable && <Button size="sm" variant="ghost" onClick={() => setEditing(s)}><Pencil className="mr-1 h-4 w-4" />Edit</Button>}
             {editable && nextStatuses(s.status as SubStatus).map((n) => (
               <Button key={n} size="sm" variant={n === "cancelled" ? "destructive" : "outline"} disabled={setStatus.isPending}
                 onClick={() => (n !== "cancelled" || confirm("Cancel this service? This cannot be undone.")) &&
@@ -102,7 +107,39 @@ function Services({ customerId, editable }: { customerId: string; editable: bool
         </div>
       ))}
       <p className="text-xs text-muted-foreground">Status changes here are recorded only. Network access changes (RADIUS / router) arrive in a later stage.</p>
+      {editing && <SubscriptionDialog sub={editing} onClose={() => setEditing(null)} />}
     </div>
+  );
+}
+
+function SubscriptionDialog({ sub, onClose }: { sub: Subscription; onClose: () => void }) {
+  const save = useSaveSubscription();
+  const [f, setF] = useState({ pppoe_username: sub.pppoe_username ?? "", ip_address: sub.ip_address ?? "", vlan: sub.vlan?.toString() ?? "", start_date: sub.start_date ?? "", end_date: sub.end_date ?? "" });
+  const submit = () => {
+    if (f.vlan && (!/^\d+$/.test(f.vlan) || Number(f.vlan) < 1 || Number(f.vlan) > 4094)) return toast.error("VLAN must be 1–4094");
+    save.mutate(
+      { id: sub.id, pppoe_username: f.pppoe_username || null, ip_address: f.ip_address || null, vlan: f.vlan ? Number(f.vlan) : null, start_date: f.start_date || null, end_date: f.end_date || null },
+      { onSuccess: () => { toast.success("Service updated"); onClose(); }, onError: (e) => toast.error(e.message) },
+    );
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit service — {sub.service_plans?.name ?? "Plan"}</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>PPPoE username</Label><Input value={f.pppoe_username} maxLength={100} onChange={(e) => setF({ ...f, pppoe_username: e.target.value })} /></div>
+            <div><Label>IP address</Label><Input value={f.ip_address} maxLength={45} onChange={(e) => setF({ ...f, ip_address: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>VLAN</Label><Input type="number" min={1} max={4094} value={f.vlan} onChange={(e) => setF({ ...f, vlan: e.target.value })} /></div>
+            <div><Label>Start date</Label><Input type="date" value={f.start_date} onChange={(e) => setF({ ...f, start_date: e.target.value })} /></div>
+            <div><Label>End date</Label><Input type="date" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
+          </div>
+        </div>
+        <DialogFooter><Button onClick={submit} disabled={save.isPending}>{save.isPending ? "Saving…" : "Save"}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
