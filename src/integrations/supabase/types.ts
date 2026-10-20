@@ -191,6 +191,62 @@ export type Database = {
           },
         ]
       }
+      invoice_reminders: {
+        Row: {
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          id: string
+          invoice_id: string
+          note: string | null
+          recipient: string | null
+          recorded_by: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          delivered_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          invoice_id: string
+          note?: string | null
+          recipient?: string | null
+          recorded_by?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          invoice_id?: string
+          note?: string | null
+          recipient?: string | null
+          recorded_by?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_reminders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           created_at: string
@@ -576,6 +632,15 @@ export type Database = {
         Args: { _amount: number; _invoice_id: string; _reason: string }
         Returns: string
       }
+      log_invoice_reminder: {
+        Args: {
+          _channel: string
+          _invoice_id: string
+          _note?: string
+          _recipient?: string
+        }
+        Returns: string
+      }
       mark_payment_failed: {
         Args: { _id: string; _reason: string }
         Returns: undefined
@@ -598,6 +663,10 @@ export type Database = {
       }
       set_invoice_state: {
         Args: { _id: string; _state: string }
+        Returns: undefined
+      }
+      set_reminder_status: {
+        Args: { _id: string; _reason?: string; _status: string }
         Returns: undefined
       }
     }
