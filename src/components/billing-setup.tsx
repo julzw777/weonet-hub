@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { QueryState } from "@/components/ui/query-state";
 import { useAuth } from "@/lib/auth";
-import { agingBucket, canManageBilling, firstOfMonth, recurringBlockers } from "@/lib/billing-rules";
+import { agingBucket, collectionsSummary, canManageBilling, firstOfMonth, recurringBlockers } from "@/lib/billing-rules";
 import { billingMoney, useBilling, useBillingSettings } from "@/lib/data/billing";
 
 export function CurrencyNotice() {
@@ -39,12 +39,21 @@ export function BillingSetup({ exportRows, customerName }: { exportRows: (n: str
     if (error) throw new Error(error.message);
   }, onSuccess: () => { toast.success("Billing settings saved"); setForm(null); qc.invalidateQueries({ queryKey: ["settings"] }); }, onError: (e) => toast.error(e.message) });
 
+  const monthStart = new Date().toISOString().slice(0, 8) + "01";
+  const [from, setFrom] = useState(monthStart);
+  const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const s = settings.data;
   const blockers = s ? recurringBlockers(s) : [];
   const today = new Date().toISOString().slice(0, 10);
   const open = (billing.data?.invoices ?? []).filter((i) => i.state === "issued" && i.balance > 0);
   const exportAging = () => exportRows("weonet-ar-aging", [["Invoice", "Customer", "Due", "Days bucket", "Currency", "Total", "Paid", "Credited", "Balance"], ...open.map((i) => [i.number, customerName(i.customer_id), i.due_date, agingBucket(i.due_date, today), i.currency_code, i.total, i.paid, i.credited, i.balance])]);
   const exportCredits = () => exportRows("weonet-credit-notes", [["Invoice", "Customer", "Date", "Currency", "Amount", "Reason"], ...(billing.data?.invoices ?? []).flatMap((i) => i.credits.map((c) => [i.number, customerName(i.customer_id), c.created_at.slice(0, 10), i.currency_code, c.amount, c.reason]))]);
+  const rangeOk = !!from && !!to && from <= to;
+  const coll = rangeOk ? collectionsSummary((billing.data?.invoices ?? []).map((i) => ({ ...i, total: Number(i.total) })), from, to) : null;
+  const sym = s?.currency_symbol ?? "";
+  const exportCollections = () => { if (!coll) return; const g = (l: string, x: typeof coll.all) => [l, x.count, x.total, x.paid, x.credited, x.balance];
+    exportRows(`weonet-collections-${from}-to-${to}`, [["Collections report", `${from} to ${to}`, `Currency ${s?.currency_code ?? ""}${s && !s.currency_confirmed ? " (unconfirmed)" : ""}`], ["Group", "Invoices", "Invoiced", "Paid", "Credited", "Balance"], g("Paid", coll.paid), g("Partial", coll.partial), g("Outstanding (unpaid, overdue, partial)", coll.outstanding), g("All issued", coll.all), [], ["Invoice", "Customer", "Issued", "Due", "Status", "Total", "Paid", "Credited", "Balance"],
+      ...(billing.data?.invoices ?? []).filter((i) => coll.invoices.includes(i as never)).map((i) => [i.number, customerName(i.customer_id), i.issued_at?.slice(0, 10), i.due_date, i.status, i.total, i.paid, i.credited, i.balance])]); };
   const buckets = ["current", "1-30", "31-60", "61-90", "90+"].map((b) => [b, open.filter((i) => agingBucket(i.due_date, today) === b).reduce((t, i) => t + i.balance, 0)] as const);
 
   return <div className="space-y-6">
@@ -70,6 +79,10 @@ export function BillingSetup({ exportRows, customerName }: { exportRows: (n: str
     <section className="space-y-3 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Finance reports</h2><div className="flex gap-2"><Button size="sm" variant="outline" disabled={!billing.data} onClick={exportAging}><Download className="mr-2 h-4 w-4" />AR aging CSV</Button><Button size="sm" variant="outline" disabled={!billing.data} onClick={exportCredits}><Download className="mr-2 h-4 w-4" />Credit notes CSV</Button></div></div>
       <QueryState loading={billing.isLoading} error={billing.error} />
       {billing.data && <div className="grid gap-3 sm:grid-cols-5">{buckets.map(([b, v]) => <div key={b} className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">{b === "current" ? "Not yet due" : `${b} days`}</p><p className="font-semibold tabular-nums">{billingMoney(v, s?.currency_symbol ?? "")}</p></div>)}</div>}
+      <div className="space-y-3 border-t border-border pt-4"><div className="flex flex-wrap items-end gap-3"><h3 className="w-full text-sm font-medium">Collections by issue date</h3><div><Label htmlFor="coll-from">From</Label><Input id="coll-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></div><div><Label htmlFor="coll-to">To</Label><Input id="coll-to" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></div><Button size="sm" variant="outline" disabled={!coll || !coll.all.count} onClick={exportCollections}><Download className="mr-2 h-4 w-4" />Collections CSV</Button></div>
+        {!rangeOk && <p className="text-sm text-destructive">Choose a start date on or before the end date.</p>}
+        {coll && billing.data && (coll.all.count === 0 ? <p className="text-sm text-muted-foreground">No issued invoices in this period.</p> : <div className="grid gap-3 sm:grid-cols-3">{([["Paid", coll.paid, coll.paid.total], ["Partial", coll.partial, coll.partial.balance], ["Outstanding", coll.outstanding, coll.outstanding.balance]] as const).map(([l, g, v]) => <div key={l} className="rounded border border-border p-3"><p className="text-xs text-muted-foreground">{l} · {g.count} invoice(s)</p><p className="font-semibold tabular-nums">{billingMoney(v, sym)}</p><p className="text-xs text-muted-foreground">{l === "Paid" ? "settled value" : "still owed"} · collected {billingMoney(g.paid, sym)}</p></div>)}</div>)}
+        <p className="text-xs text-muted-foreground">Counts issued invoices by the date they were issued; drafts and voided invoices are excluded. Outstanding includes partial, unpaid and overdue.</p></div>
       <p className="text-xs text-muted-foreground">Aging uses the current currency and assumes one currency is in use.</p>
     </section>
   </div>;
