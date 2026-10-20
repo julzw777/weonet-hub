@@ -173,16 +173,18 @@ export default function Customers() {
                     <TabsTrigger value="services">Services</TabsTrigger>
                     <TabsTrigger value="invoices">Invoices</TabsTrigger>
                     <TabsTrigger value="tickets">Tickets</TabsTrigger>
+                    <TabsTrigger value="equipment">Equipment & supplies</TabsTrigger>
                   </TabsList>
                   <TabsContent value="profile" className="space-y-3 pt-4 text-sm">
-                    <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{selected.email || "—"}</div>
-                    <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{selected.phone || "—"}</div>
-                    <div><span className="text-muted-foreground">Customer since: </span>{new Date(selected.created_at).toLocaleDateString()}</div>
-                    {selected.notes && <p className="rounded-md bg-muted p-3">{selected.notes}</p>}
+                    {selected.email && <p className="flex items-center gap-2"><Mail className="h-4 w-4" />{selected.email}</p>}
+                    {selected.phone && <p className="flex items-center gap-2"><Phone className="h-4 w-4" />{selected.phone}</p>}
+                    <p><span className="text-muted-foreground">Type:</span> {selected.customer_type}</p>
+                    {selected.notes && <p className="text-muted-foreground">{selected.notes}</p>}
                   </TabsContent>
                   <TabsContent value="services" className="pt-4"><Services customerId={selected.id} editable={canEditSubscriptions(roles)} /></TabsContent>
                   <TabsContent value="invoices" className="pt-4">{roles.some((r) => ["admin", "finance", "care", "readonly"].includes(r)) ? <CustomerInvoices customerId={selected.id} /> : <QueryState empty emptyText="Your role cannot view billing records." />}</TabsContent>
-                  <TabsContent value="tickets" className="pt-4"><QueryState empty emptyText="Customer-linked tickets are coming in the tickets stage." /></TabsContent>
+                  <TabsContent value="tickets" className="pt-4"><CustomerTickets customerId={selected.id} /></TabsContent>
+                  <TabsContent value="equipment" className="pt-4"><CustomerEquipment customerId={selected.id} /></TabsContent>
                 </Tabs>
               </CardContent>
             </>
