@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import Plans from "./pages/Plans";
 import Admin from "./pages/Admin";
 import Reports from "./pages/Reports";
+import Radius from "./pages/Radius";
 import { AuditLog } from "@/components/audit-log";
 import { ErrorBoundary } from "@/components/error-boundary";
 
@@ -40,6 +41,7 @@ const App = () => (
                     <Route path="/billing" element={<RequireAuth roles={["finance", "readonly"]}><Billing /></RequireAuth>} />
                     <Route path="/tickets" element={<RequireAuth roles={["care", "tech", "noc", "readonly"]}><Tickets /></RequireAuth>} />
                     <Route path="/network" element={<RequireAuth roles={["noc", "tech", "readonly"]}><Network /></RequireAuth>} />
+                    <Route path="/radius" element={<RequireAuth roles={["noc", "care"]}><Radius /></RequireAuth>} />
                     <Route path="/plans" element={<Plans />} />
                     <Route path="/inventory" element={<RequireAuth roles={["warehouse", "tech", "readonly"]}><Inventory /></RequireAuth>} />
                     <Route path="/hotspot" element={<Soon t="Hotspot" d="Hotspot vouchers are out of scope until Weonet confirms the hotspot controller and voucher rules." />} />
