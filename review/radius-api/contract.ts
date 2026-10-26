@@ -65,7 +65,7 @@ export function validateResponse(op: Op, body: unknown): Record<string, unknown>
     return { data: value };
   }
   if (!Array.isArray(body.data) || body.data.length > 100 || !record(body.page) || !(body.page.next_cursor === null || (typeof body.page.next_cursor === "string" && body.page.next_cursor.length <= 512)) || !count(body.page.limit) || Number(body.page.limit) < 1 || Number(body.page.limit) > 100) throw new Error("Invalid paginated response");
-  const mapper = op.op === "list_subscribers" ? subscriber : op.op === "list_plans" ? plan : op.op === "list_nas" ? nas : (v: unknown) => session(v, op.op === "list_accounting");
+  const mapper: (v: unknown) => Record<string, unknown> = op.op === "list_subscribers" ? subscriber : op.op === "list_plans" ? plan : op.op === "list_nas" ? nas : (v: unknown) => session(v, op.op === "list_accounting");
   return { data: body.data.map(mapper), page: { next_cursor: body.page.next_cursor, limit: body.page.limit } };
 }
 export function requestHeaders(request: DraftRequest, authorization: string) {

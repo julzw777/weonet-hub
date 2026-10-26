@@ -126,5 +126,6 @@ export function mockResponse(op: Op, random: () => string): { status: number; bo
     case "list_sessions": return { status: 200, body: { data: sessions } };
     case "list_accounting": return { status: 200, body: { data: accounting } };
     case "list_nas": return { status: 200, body: { data: nas.map((n) => ({ ...n, shared_secret: "never-sent" })) } };
+    default: return { status: 503, body: { error: { code: "UNCONFIGURED", message: "Provisioning unavailable" } } };
   }
 }
