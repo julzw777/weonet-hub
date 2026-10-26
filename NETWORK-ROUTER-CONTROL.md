@@ -49,3 +49,8 @@ When enabled later, impactful actions must default to `dry_run: true` (already t
 ## Tests
 - `npm test` — includes `supabase/functions/router-control/lib.test.ts` (roles, allow-list, destination validation, timeouts/retries, redaction).
 - `supabase/tests/network.sql` — rollback-only database checks (forged health rejected, bad references rejected, audit written, duplicate idempotency key rejected).
+
+## RADIUS management (RADIUS menu)
+- All calls go through the `radius-api` server function to a fixed set of upstream endpoints: `GET /v1/subscribers`, `POST /v1/subscribers`, `PATCH /v1/subscribers/:id/status`, `POST /v1/subscribers/:id/reset-password`, `GET /v1/plans`, `GET /v1/sessions`, `GET /v1/accounting`, `GET /v1/nas`. No direct MariaDB/daloRADIUS/FreeRADIUS access.
+- Secrets (server only): `RADIUS_API_BASE_URL` (https, no credentials) and `RADIUS_API_TOKEN` (sent as Bearer). Until both are set the function returns clearly labelled sample responses.
+- View: Admin, NOC, Care. Create/suspend/reactivate/reset password: Admin, NOC. Every subscriber change (including failures) writes an `audit_logs` entry under `radius_subscribers`; passwords are never logged. NAS shared secrets and any secret/password/token fields are stripped before reaching the browser.

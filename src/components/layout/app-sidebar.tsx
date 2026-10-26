@@ -8,7 +8,8 @@ import {
   Archive, 
   Wifi, 
   BarChart3, 
-  Settings 
+  Settings,
+  RadioTower
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -59,6 +60,12 @@ const menuItems = [
     title: "Network",
     url: "/network",
     icon: Network,
+    group: "Operations"
+  },
+  {
+    title: "RADIUS",
+    url: "/radius",
+    icon: RadioTower,
     group: "Operations"
   },
   {
