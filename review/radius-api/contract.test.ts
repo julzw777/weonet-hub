@@ -34,6 +34,8 @@ describe("proposed RADIUS provisioning safety", () => {
     expect(validateDraftRequest({ ...request.op, actor: "admin" }, requestId, key)).toBeNull();
     expect(validateDraftRequest({ op: "reset_password", id: "../other" }, requestId, key)).toBeNull();
     expect(validateDraftRequest(request.op, requestId, key)?.idempotencyKey).toBe(key);
+    expect(validateDraftRequest({ op: "toString" }, requestId, key)).toBeNull();
+    expect(validateDraftRequest({ op: "create_subscriber", username: "staging.user", full_name: "Staging", plan_id: "plan-1", password: "bad\npassword" }, requestId, key)).toBeNull();
   });
   it("sends correlation and Idempotency-Key unchanged", async () => {
     const deps = dependencies(); await executeDraft(request, deps);

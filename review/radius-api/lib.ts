@@ -28,9 +28,9 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const USER = /^[a-z0-9._@-]{3,64}$/;
 
 export function validateOp(body: unknown): { ok: true; value: Op } | { ok: false; error: string } {
-  if (!body || typeof body !== "object") return { ok: false, error: "Invalid request" };
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { ok: false, error: "Invalid request" };
   const b = body as Record<string, unknown>;
-  const fields = ALLOWED[b.op as string];
+  const fields = typeof b.op === "string" && Object.hasOwn(ALLOWED, b.op) ? ALLOWED[b.op] : undefined;
   if (!fields) return { ok: false, error: "Unknown operation" };
   const extra = Object.keys(b).filter((k) => k !== "op" && !fields.includes(k));
   if (extra.length) return { ok: false, error: `Unexpected field: ${extra[0]}` };
@@ -42,7 +42,7 @@ export function validateOp(body: unknown): { ok: true; value: Op } | { ok: false
       if (typeof b.username !== "string" || !USER.test(b.username)) return { ok: false, error: "Username must be 3–64 lowercase letters, digits or . _ @ -" };
       if (typeof b.full_name !== "string" || !b.full_name.trim() || b.full_name.length > 120) return { ok: false, error: "Full name is required" };
       if (typeof b.plan_id !== "string" || !ID.test(b.plan_id)) return { ok: false, error: "Choose a plan" };
-      if (typeof b.password !== "string" || b.password.length < 8 || b.password.length > 64) return { ok: false, error: "Password must be 8–64 characters" };
+      if (typeof b.password !== "string" || b.password.length < 8 || b.password.length > 64 || /[\x00-\x1f\x7f]/.test(b.password)) return { ok: false, error: "Password must be 8–64 characters without control characters" };
       break;
     case "set_status":
       if (typeof b.id !== "string" || !ID.test(b.id)) return { ok: false, error: "Invalid subscriber" };
