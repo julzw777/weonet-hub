@@ -5,3 +5,5 @@
 - Financial records are immutable except through explicit, audited lifecycle functions; maintain invoice currency snapshots to preserve historical amounts.
 - Run domain rule tests with `npm test`; keep billing calculation tests beside their shared rules.- Router access goes only through the `router-control` edge function with an allow-listed action set and device-reference secrets; browsers never hold router addresses or credentials.
 - Stock quantities change only through audited database functions (adjust_stock, record_supply_usage, loan_equipment, return_equipment) so concurrent staff cannot drive stock negative.
+- Keep unapproved RADIUS server changes in review/radius-api, outside auto-deployed functions, and lock Hub calls until owner-approved contract and audited server deployment; browser gating is not server authorization.
+- RADIUS mutations require verified service/staff identity, durable API idempotency, explicit response allowlists and checked intent/completion audit; uncertain or partially audited upstream results must never become Hub success.

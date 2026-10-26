@@ -1,5 +1,11 @@
 # Weonet remaining work
 
+## RADIUS contract review (no deployment)
+- [x] Draft the unconfirmed provisioning contract and owner confirmation checklist.
+- [x] Stage fail-closed adapter, strict response validation, idempotency and audit handling outside auto-deployed functions; block Hub writes.
+- [x] Run local tests and review harness verification; document deployment and infrastructure blockers.
+- [ ] BLOCKED: owner confirms API/auth/schema and authorizes deployment of staged server fix; legacy deployed function remains unchanged, so direct-call sample writes are not fixed live.
+
 - [x] Verify Stage 2 permission and lifecycle tests (7 passed).
 - [x] Implement Stage 3 foundation: persisted invoices, line items, manual payments, atomic allocation and reversal, reconciliation queue, CSV export, customer invoice history (21 rule tests and rollback database checks passed; full signed-in UI checks blocked below).
 - [ ] Authenticated end-to-end checks: external Supabase sessions cannot be supplied in this environment.

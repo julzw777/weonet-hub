@@ -5,8 +5,14 @@ import type { Op, RadiusAccounting, RadiusNas, RadiusPlan, RadiusSession, Radius
 export type { RadiusAccounting, RadiusNas, RadiusPlan, RadiusSession, RadiusSubscriber, SubscriberStatus };
 export interface RadiusResult<T> { data: T; mock: boolean }
 
+// Fail closed while the server safety patch is staged (not deployed).
+// Do not re-enable until the separate service owner confirms the contract and
+// the reviewed adapter replaces the legacy function. Never use demo writes.
+export const RADIUS_PROVISIONING_CONFIRMED = false;
+
 /** Typed client. All calls go through the radius-api server function; the browser never sees the RADIUS URL or token. */
 export async function radiusCall<T>(op: Op): Promise<RadiusResult<T>> {
+  if (!RADIUS_PROVISIONING_CONFIRMED) throw new Error("RADIUS provisioning is unconfigured: the proposed API contract and server safety patch require confirmation. No request was sent.");
   const { data, error } = await supabase.functions.invoke("radius-api", { body: op });
   if (error) {
     let msg = error.message;
