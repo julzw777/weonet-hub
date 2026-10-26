@@ -89,7 +89,7 @@ export function auditDetails(op: Op): Record<string, unknown> {
 
 export function resolveBase(raw: string | undefined): string | null {
   if (!raw) return null;
-  try { const u = new URL(raw); if (u.protocol !== "https:" || u.username || u.password || u.search) return null; return u.origin + u.pathname.replace(/\/$/, ""); } catch { return null; }
+  try { const u = new URL(raw); if (u.protocol !== "https:" || u.username || u.password || u.search || u.hash || (u.port && u.port !== "443")) return null; return u.origin + u.pathname.replace(/\/$/, ""); } catch { return null; }
 }
 
 // ---- Mock responses (used only when RADIUS_API_BASE_URL / RADIUS_API_TOKEN are not set) ----
@@ -115,6 +115,8 @@ const accounting: RadiusAccounting[] = [
 ];
 
 export function mockResponse(op: Op, random: () => string): { status: number; body: unknown } {
+  // Test fixtures only. Never import this helper into the staged server entrypoint.
+  if (isWrite(op.op)) return { status: 503, body: { error: { code: "UNCONFIGURED", message: "Sample data is read-only; provisioning is unavailable" } } };
   switch (op.op) {
     case "list_subscribers": {
       const q = op.search?.toLowerCase();

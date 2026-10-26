@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useCreateSubscriber, useRadiusAccounting, useRadiusNas, useRadiusPlans, useRadiusSessions,
   useRadiusSubscribers, useResetPassword, useSetSubscriberStatus,
+  RADIUS_PROVISIONING_CONFIRMED,
 } from "@/lib/radius/client";
 
 const bytes = (n: number) => { const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return `${n.toFixed(1)} ${u[i]}`; };
@@ -22,7 +23,7 @@ const dt = (s: string | null) => (s ? new Date(s).toLocaleString() : "—");
 
 function MockBanner({ mock }: { mock?: boolean }) {
   if (!mock) return null;
-  return <Alert><AlertDescription>Sample responses — the RADIUS API isn't connected yet (RADIUS_API_BASE_URL / RADIUS_API_TOKEN not set). Changes here are not saved anywhere except the audit log.</AlertDescription></Alert>;
+  return <Alert><AlertDescription>Read-only sample data. Provisioning is unavailable.</AlertDescription></Alert>;
 }
 
 function CreateSubscriber() {
@@ -114,10 +115,10 @@ function Nas() {
 export default function Radius() {
   const { hasRole } = useAuth();
   return <div className="space-y-6 p-6">
-    <div><h1 className="text-2xl font-bold">RADIUS management</h1><p className="text-muted-foreground">Subscribers, plans, sessions and NAS devices from the RADIUS server.</p></div>
+    <div><h1 className="text-2xl font-bold">RADIUS management</h1><p className="text-muted-foreground">Provisioning API: proposed / unconfirmed.</p></div>
     <Card><CardHeader className="pb-2"><CardTitle className="sr-only">RADIUS</CardTitle></CardHeader><CardContent>
       <Tabs defaultValue="subs"><TabsList><TabsTrigger value="subs">Subscribers</TabsTrigger><TabsTrigger value="plans">Service plans</TabsTrigger><TabsTrigger value="sessions">Sessions & accounting</TabsTrigger><TabsTrigger value="nas">NAS devices</TabsTrigger></TabsList>
-        <TabsContent value="subs"><Subscribers canWrite={hasRole("noc")} /></TabsContent>
+        <TabsContent value="subs"><Subscribers canWrite={RADIUS_PROVISIONING_CONFIRMED && (hasRole("noc") || hasRole("admin"))} /></TabsContent>
         <TabsContent value="plans"><Plans /></TabsContent>
         <TabsContent value="sessions"><Sessions /></TabsContent>
         <TabsContent value="nas"><Nas /></TabsContent>
