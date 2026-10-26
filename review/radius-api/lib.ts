@@ -122,19 +122,6 @@ export function mockResponse(op: Op, random: () => string): { status: number; bo
       const q = op.search?.toLowerCase();
       return { status: 200, body: { data: q ? subs.filter((s) => s.username.includes(q) || s.full_name.toLowerCase().includes(q)) : subs } };
     }
-    case "create_subscriber":
-      if (subs.some((s) => s.username === op.username)) return { status: 409, body: { error: "Username already exists" } };
-      if (!plans.some((p) => p.id === op.plan_id)) return { status: 422, body: { error: "Unknown plan" } };
-      return { status: 201, body: { data: { id: `sub-${random().slice(0, 6)}`, username: op.username, full_name: op.full_name, plan_id: op.plan_id, status: "active", created_at: new Date().toISOString(), expires_at: null } } };
-    case "set_status": {
-      const s = subs.find((x) => x.id === op.id);
-      if (!s) return { status: 404, body: { error: "Subscriber not found" } };
-      return { status: 200, body: { data: { ...s, status: op.status } } };
-    }
-    case "reset_password": {
-      if (!subs.some((x) => x.id === op.id)) return { status: 404, body: { error: "Subscriber not found" } };
-      return { status: 200, body: { data: { temporary_password: random().slice(0, 12) } } };
-    }
     case "list_plans": return { status: 200, body: { data: plans } };
     case "list_sessions": return { status: 200, body: { data: sessions } };
     case "list_accounting": return { status: 200, body: { data: accounting } };
