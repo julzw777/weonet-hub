@@ -8,3 +8,4 @@
 - Keep unapproved RADIUS server changes in review/radius-api, outside auto-deployed functions, and lock Hub calls until owner-approved contract and audited server deployment; browser gating is not server authorization.
 - RADIUS mutations require verified service/staff identity, durable API idempotency, explicit response allowlists and checked intent/completion audit; uncertain or partially audited upstream results must never become Hub success.
 - Keep the standalone RADIUS review service as an injected Request/Response handler with interfaces only and no listener, network/DB adapter or environment discovery; unconditional operation gates prevent configuration alone from enabling unreviewed behavior.
+- Hub staff account management (create/edit/deactivate/reset password) goes only through the `admin-users` edge function with the service role; browsers never call Supabase Admin APIs, and every mutation must write an audit_logs row or report failure.
