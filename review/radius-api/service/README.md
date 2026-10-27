@@ -30,12 +30,13 @@ The package manifest permits local `npm test` when review dependencies are alrea
 - API DNS resolves to the RADIUS instance; this alone does not establish an API service, TLS or reachability.
 - Current Docker Compose contains only `radius-mysql`, `radius`, `radius-web`; no provisioning API container was reported.
 - All inspected tables have zero rows: `radcheck`, `userinfo`, `userbillinfo`, `billing_plans`, `billing_plans_profiles`, `radusergroup`, `radacct`.
+- Every inspected table was reported with `Engine=InnoDB` in `SHOW TABLE STATUS`, so transactional engine support is available at the storage layer. The reported database server version is deliberately not recorded here.
 - `userinfo.username` has a nullable, non-unique index. It cannot be treated as a guaranteed unique subscriber identity.
 - `userbillinfo` has legacy credit-card fields: **never select, log or expose any of this table**.
 - Security group allows TCP 22 from all IPv4 sources and UDP 1812/1813 from a candidate single-source /32 only; TCP 80/443/3306 are not allowed. Candidate source identity is unconfirmed. No addresses, group IDs or other sensitive infrastructure identifiers are recorded here, and no rules were changed.
 
 ## Exact blockers before another enabling stage
 
-Owner confirmation and evidence are required for RADIUS authentication/password representation and disable semantics; storage engines/transaction guarantees; plan-to-group mappings; API identity issuer, allowed algorithm and key source; least-privilege DB grants; TLS termination; durable idempotency/audit schema and recovery policy. Stable API IDs, subscriber uniqueness/NULL handling, NAS registry/status/freshness, accounting freshness/counter semantics, actual route/version contract and staging acceptance also remain unconfirmed under the parent contract.
+Owner confirmation and evidence are required for RADIUS authentication/password representation and disable semantics; atomic multi-table operation with audit and idempotency guarantees (inspected tables are reported as InnoDB, so the storage layer supports transactions, but cross-table atomicity plus durable audit/idempotency behavior is unverified); plan-to-group mappings; API identity issuer, allowed algorithm and key source; least-privilege DB grants; TLS termination; durable idempotency/audit schema and recovery policy. Stable API IDs, subscriber uniqueness/NULL handling, NAS registry/status/freshness, accounting freshness/counter semantics, actual route/version contract and staging acceptance also remain unconfirmed under the parent contract.
 
 No schema migrations, production users/grants, ports, DNS/security-group changes or live calls are included. The existing Hub RADIUS client/page remain locked and unchanged. The legacy deployed Hub function's previously documented direct-call safety gaps remain unresolved; this scaffold does not remediate a deployed service.
