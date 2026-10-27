@@ -59,10 +59,11 @@ export const useAuth = () => {
 };
 
 export function RequireAuth({ children, roles }: { children: ReactNode; roles?: StaffRole[] }) {
-  const { session, loading, hasRole } = useAuth();
+  const { session, loading, mustChangePassword, hasRole } = useAuth();
   const loc = useLocation();
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
   if (!session) return <Navigate to="/login" state={{ from: loc.pathname }} replace />;
+  if (mustChangePassword) return <ForcePasswordChange />;
   if (roles && !hasRole(...roles))
     return <div className="p-6"><h1 className="text-xl font-semibold">Access denied</h1><p className="text-muted-foreground">Your role doesn't allow this page.</p></div>;
   return <>{children}</>;
