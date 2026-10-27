@@ -7,3 +7,4 @@
 - Stock quantities change only through audited database functions (adjust_stock, record_supply_usage, loan_equipment, return_equipment) so concurrent staff cannot drive stock negative.
 - Keep unapproved RADIUS server changes in review/radius-api, outside auto-deployed functions, and lock Hub calls until owner-approved contract and audited server deployment; browser gating is not server authorization.
 - RADIUS mutations require verified service/staff identity, durable API idempotency, explicit response allowlists and checked intent/completion audit; uncertain or partially audited upstream results must never become Hub success.
+- Keep the standalone RADIUS review service as an injected Request/Response handler with interfaces only and no listener, network/DB adapter or environment discovery; unconditional operation gates prevent configuration alone from enabling unreviewed behavior.
