@@ -92,6 +92,12 @@ const menuItems = [
     icon: Settings,
     group: "System"
   },
+  {
+    title: "Users",
+    url: "/admin/users",
+    icon: UserCog,
+    group: "System"
+  },
 ];
 
 const groupedItems = menuItems.reduce((acc, item) => {

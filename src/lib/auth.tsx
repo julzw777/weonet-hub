@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { ForcePasswordChange } from "@/components/force-password-change";
 
 export type StaffRole = "admin" | "noc" | "finance" | "care" | "tech" | "warehouse" | "readonly";
 
@@ -9,6 +10,7 @@ interface AuthState {
   session: Session | null;
   roles: StaffRole[];
   loading: boolean;
+  mustChangePassword: boolean;
   hasRole: (...r: StaffRole[]) => boolean;
   signOut: () => Promise<void>;
 }
@@ -18,15 +20,23 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<StaffRole[]>([]);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async (s: Session | null) => {
       setSession(s);
       if (s) {
-        const { data } = await supabase.from("user_roles" as never).select("role").eq("user_id", s.user.id);
-        setRoles(((data as { role: StaffRole }[] | null) ?? []).map((r) => r.role));
-      } else setRoles([]);
+        const [{ data: roleRows }, { data: profile }] = await Promise.all([
+          supabase.from("user_roles" as never).select("role").eq("user_id", s.user.id),
+          supabase.from("staff_profiles").select("must_change_password").eq("id", s.user.id).maybeSingle(),
+        ]);
+        setRoles(((roleRows as { role: StaffRole }[] | null) ?? []).map((r) => r.role));
+        setMustChangePassword(!!profile?.must_change_password);
+      } else {
+        setRoles([]);
+        setMustChangePassword(false);
+      }
       setLoading(false);
     };
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
