@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.complete_password_change() FROM anon, PUBLIC;
