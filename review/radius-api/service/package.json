@@ -1,0 +1,9 @@
+{
+  "name": "weonet-radius-service-review",
+  "version": "0.0.0-review",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "vitest run --config vitest.config.ts" },
+  "dependencies": { "zod": "3.25.76" },
+  "devDependencies": { "@types/node": "22.16.5", "vitest": "3.2.4" }
+}
