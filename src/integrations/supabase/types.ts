@@ -764,6 +764,7 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          must_change_password: boolean
           phone: string | null
           updated_at: string
         }
@@ -773,6 +774,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id: string
+          must_change_password?: boolean
           phone?: string | null
           updated_at?: string
         }
@@ -782,6 +784,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          must_change_password?: boolean
           phone?: string | null
           updated_at?: string
         }
@@ -1051,6 +1054,7 @@ export type Database = {
         Args: { _amount: number; _invoice_id: string; _payment_id: string }
         Returns: undefined
       }
+      complete_password_change: { Args: never; Returns: undefined }
       create_invoice: {
         Args: {
           _customer_id: string
