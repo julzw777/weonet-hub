@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Plans from "./pages/Plans";
 import Admin from "./pages/Admin";
+import Users from "./pages/Users";
 import Reports from "./pages/Reports";
 import Radius from "./pages/Radius";
 import { AuditLog } from "@/components/audit-log";
@@ -47,6 +48,7 @@ const App = () => (
                     <Route path="/hotspot" element={<Soon t="Hotspot" d="Hotspot vouchers are out of scope until Weonet confirms the hotspot controller and voucher rules." />} />
                     <Route path="/reports" element={<RequireAuth roles={["finance", "care", "noc", "tech", "readonly"]}><Reports /></RequireAuth>} />
                     <Route path="/admin" element={<RequireAuth roles={["admin"]}><div className="space-y-6"><Admin /><AuditLog /></div></RequireAuth>} />
+                    <Route path="/admin/users" element={<RequireAuth roles={["admin"]}><Users /></RequireAuth>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes></ErrorBoundary>
                 </DashboardLayout>
