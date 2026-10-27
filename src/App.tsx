@@ -48,6 +48,7 @@ const App = () => (
                     <Route path="/hotspot" element={<Soon t="Hotspot" d="Hotspot vouchers are out of scope until Weonet confirms the hotspot controller and voucher rules." />} />
                     <Route path="/reports" element={<RequireAuth roles={["finance", "care", "noc", "tech", "readonly"]}><Reports /></RequireAuth>} />
                     <Route path="/admin" element={<RequireAuth roles={["admin"]}><div className="space-y-6"><Admin /><AuditLog /></div></RequireAuth>} />
+                    <Route path="/admin/users" element={<RequireAuth roles={["admin"]}><Users /></RequireAuth>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes></ErrorBoundary>
                 </DashboardLayout>

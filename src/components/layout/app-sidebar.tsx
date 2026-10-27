@@ -1,15 +1,16 @@
-import { 
-  LayoutDashboard, 
-  Users, 
-  CreditCard, 
-  Package, 
-  Ticket, 
-  Network, 
-  Archive, 
-  Wifi, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  Package,
+  Ticket,
+  Network,
+  Archive,
+  Wifi,
+  BarChart3,
   Settings,
-  RadioTower
+  RadioTower,
+  UserCog
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
