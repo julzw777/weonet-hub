@@ -70,3 +70,46 @@ export const useAddRole = () =>
   useSave<{ user_id: string; role: StaffRole }>("staff", (v) => supabase.from("user_roles").insert(v));
 export const useRemoveRole = () =>
   useSave<{ user_id: string; role: StaffRole }>("staff", (v) => supabase.from("user_roles").delete().eq("user_id", v.user_id).eq("role", v.role));
+
+// ---- Hub user management (admin-users edge function; the server enforces Super Admin only) ----
+import type { HubUser } from "@/lib/user-rules";
+
+const invokeAdminUsers = async <T,>(body: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.functions.invoke("admin-users", { body });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data as T;
+};
+
+export const useHubUsers = () =>
+  useQuery({
+    queryKey: ["hub-users"],
+    queryFn: () => invokeAdminUsers<{ users: HubUser[] }>({ action: "list" }).then((r) => r.users),
+  });
+
+const useAdminUserAction = <TVars, TResult>(fn: (v: TVars) => Promise<TResult>) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["hub-users"] });
+      qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+  });
+};
+
+export const useCreateHubUser = () =>
+  useAdminUserAction((v: { full_name: string; email: string; password: string; role: StaffRole }) =>
+    invokeAdminUsers<{ user: { id: string; email: string }; temporary_password: string }>({ action: "create", ...v }));
+
+export const useUpdateHubUser = () =>
+  useAdminUserAction((v: { user_id: string; full_name?: string; role?: StaffRole }) =>
+    invokeAdminUsers<{ ok: true }>({ action: "update", ...v }));
+
+export const useSetHubUserStatus = () =>
+  useAdminUserAction((v: { user_id: string; status: "active" | "deactivated" }) =>
+    invokeAdminUsers<{ ok: true }>({ action: "set_status", ...v }));
+
+export const useResetHubUserPassword = () =>
+  useAdminUserAction((v: { user_id: string; password: string }) =>
+    invokeAdminUsers<{ ok: true; temporary_password: string }>({ action: "reset_password", ...v }));
