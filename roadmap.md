@@ -1,7 +1,7 @@
 # Weonet remaining work
 
 ## RADIUS contract review (no deployment)
-- [ ] Build and locally verify the standalone fail-closed service scaffold; leave Hub locks unchanged.
+- [x] Build and locally verify the standalone fail-closed service scaffold; 60 service tests, 21 Hub/staged-adapter regression tests and scoped type check passed; Hub locks unchanged.
 - [x] Draft the unconfirmed provisioning contract and owner confirmation checklist.
 - [x] Stage fail-closed adapter, strict response validation, idempotency and audit handling outside auto-deployed functions; block Hub writes.
 - [x] Run local tests and review harness verification; document deployment and infrastructure blockers.

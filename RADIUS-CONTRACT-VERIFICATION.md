@@ -2,6 +2,50 @@
 
 **PROPOSED / UNCONFIRMED. Local checks only. No deployment, publication, external endpoint probing or production writes.**
 
+## 2026-10-27 — standalone offline service increment
+
+New package under `review/radius-api/service/`: `config.ts`, `schemas.ts`, `repositories.ts`, `handler.ts`, `handler.test.ts`, `vitest.config.ts`, `package.json`, `README.md`. Architecture/tracking updates: `AGENTS.md`, `roadmap.md`. No changes to the existing Hub client/page or any file under `supabase/functions`; no migrations or DB grants.
+
+The injected Request/Response handler has generic `/health` liveness and permanently non-ready `/ready`; closed proposed route schemas, byte limits, role/scope tests and safe response projection. Repository **interfaces only** model verified safe table names and nullable/non-unique usernames; no `userbillinfo`, SQL, driver, writes or repository calls. There is no listener, environment discovery or production JWT verifier. Every protected operation is non-success even with synthetic configuration/identity. Durable idempotency/audit/recovery and operational semantics remain blockers, not implemented features.
+
+### Exact new local commands and results
+
+```sh
+npm test -- --config vitest.config.ts --root review/radius-api/service
+```
+
+```text
+Test Files  1 passed (1)
+     Tests  60 passed (60)
+SERVICE_TEST_EXIT=0
+```
+
+```sh
+tsgo --ignoreConfig --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler --lib ES2022,DOM,DOM.Iterable --types node --skipLibCheck review/radius-api/service/config.ts review/radius-api/service/schemas.ts review/radius-api/service/repositories.ts review/radius-api/service/handler.ts review/radius-api/service/handler.test.ts review/radius-api/service/vitest.config.ts
+```
+
+No diagnostics, exit **0**. No tool/package downloads. Initial service test invocation supplied the config path twice relative to `--root` and exited 1 before collecting tests; the corrected command above passed. Initial scoped type check found the Zod refinement/min chaining and two optional mock accesses; fixed, then exit 0.
+
+### Existing Hub boundary and staged-adapter regression checks (separate suite)
+
+```sh
+npm test -- src/lib/radius/client.test.ts review/radius-api/contract.test.ts
+```
+
+```text
+Test Files  2 passed (2)
+     Tests  21 passed (21)
+HUB_REGRESSION_EXIT=0
+```
+
+These are 2 existing Hub-lock tests plus 19 existing staged-adapter tests, **not** part of the 60 new scaffold tests. The historical 104-test full-suite result below was not rerun or represented as a current full-suite run. Constructed requests and injected identities only; no live auth/API/DB/NAS traffic. No browser/API acceptance testing was performed because Hub calls must remain locked.
+
+SHA-256 comparison against pre-edit hashes: `src/lib/radius/client.ts`, `src/pages/Radius.tsx`, `supabase/functions/radius-api/index.ts` all **OK**. No manual app build/type check was run since application files were unchanged; harness build log observed **build OK**, latest observed entry `2026-10-27T15:21:01Z`. This does not establish a deployed or running provisioning API.
+
+**Nothing deployed, published, opened, migrated or tested against live API/NAS/DB.** User-supplied live facts are recorded without infrastructure identifiers in the service README and were not independently verified. Owner must still confirm password/auth and disable semantics, engines/transactions, plan mappings, issuer/algorithm/key source, grants, TLS termination, idempotency/audit/recovery schema/policy and staging acceptance. Existing deployed Hub-function direct-call risks remain unresolved; no security scan or new warning count is claimed.
+
+## Historical Hub review checks — 2026-10-26
+
 ## Changed files/features
 
 - `RADIUS-PROVISIONING-API.md`: proposed routes, field schemas, identity/network/database boundaries, idempotency/recovery and field-by-field owner checklist.
