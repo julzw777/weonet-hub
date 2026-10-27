@@ -9,7 +9,7 @@ const clean = (max: number) => z.string().min(1).max(max).refine(v => !/[\x00-\x
 const name = clean(120).refine(v => v === v.trim());
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const username = z.string().regex(/^[a-z0-9._@-]{3,64}$/);
-const password = clean(64).min(8);
+const password = z.string().min(8).max(64).refine(v => !/[\x00-\x1f\x7f]/.test(v));
 const timestamp = z.string().datetime({ precision: undefined }).refine(v => {
   // Reject calendar normalization (e.g. February 30), not merely parseable strings.
   const parsed = new Date(v);

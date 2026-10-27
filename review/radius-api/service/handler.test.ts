@@ -53,7 +53,7 @@ describe("offline review service gates", () => {
   it("verification failures and exception contents never escape", async () => {
     const d = deps(); d.verifySignedIdentity = vi.fn().mockRejectedValue(new Error("mysql://password=DO_NOT_LEAK"));
     const response = await createService(d)(req()); expect(response.status).toBe(401);
-    expect(await response.text()).not.toContain("DO_NOT_LEAK"); expect(JSON.stringify(vi.mocked(d.log).mock.calls)).not.toContain("DO_NOT_LEAK");
+    expect(await response.text()).not.toContain("DO_NOT_LEAK"); expect(JSON.stringify(vi.mocked(d.log ?? vi.fn()).mock.calls)).not.toContain("DO_NOT_LEAK");
   });
   it.each([
     { ...identity, roles: ["care"] }, { ...identity, scopes: ["radius:read"] },
@@ -79,7 +79,7 @@ describe("offline review service gates", () => {
       const value = await response.json(); expect(value.error).toMatchObject({ code: "OPERATION_DISABLED", outcome: "not_applied", retryable: false }); expect(value).not.toHaveProperty("data");
     }
     expect(d.repositories?.countRows).not.toHaveBeenCalled(); expect(d.repositories?.inspectUsernames).not.toHaveBeenCalled();
-    const logs = JSON.stringify(vi.mocked(d.log).mock.calls);
+    const logs = JSON.stringify(vi.mocked(d.log ?? vi.fn()).mock.calls);
     expect(logs).not.toMatch(/review-only-password|header.payload.signature|review.user|actorId|mysql/);
   });
   it("passes actual request binding only to the injected verifier", async () => {

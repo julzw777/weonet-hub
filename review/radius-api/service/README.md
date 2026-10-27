@@ -9,7 +9,7 @@ This standalone TypeScript package exports `createService` from `handler.ts`, an
 From the existing project root, using already installed dependencies (no install or network access):
 
 ```sh
-npm test -- --config review/radius-api/service/vitest.config.ts --root review/radius-api/service
+npm test -- --config vitest.config.ts --root review/radius-api/service
 tsgo --ignoreConfig --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler --lib ES2022,DOM,DOM.Iterable --types node --skipLibCheck review/radius-api/service/config.ts review/radius-api/service/schemas.ts review/radius-api/service/repositories.ts review/radius-api/service/handler.ts review/radius-api/service/handler.test.ts review/radius-api/service/vitest.config.ts
 ```
 
