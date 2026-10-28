@@ -7,7 +7,7 @@ import type { ListQuery } from "./schemas.js";
 import { AuditUnavailableError, OutcomeUnknownError, type MutationInput, type MutationMeta, type MutationResult, type Page, type SchemaReport, type Store } from "./store.js";
 
 type Rows = RowDataPacket[];
-const iso = (d: Date | null) => (d ? d.toISOString().replace(/\.\d{3}Z$/, ".000Z").replace(".000Z", "Z") : null);
+const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const like = (s: string) => `%${s.replace(/[\\%_]/g, c => "\\" + c)}%`;
 class Rejected extends Error { constructor(readonly status: 404 | 409 | 422, readonly code: string) { super(code); } }
 
@@ -139,8 +139,10 @@ export class MySqlStore implements Store {
       case "create_subscriber": {
         const b = input.body;
         const plan = await this.plan(conn, b.plan_id);
-        const [taken] = await conn.execute<Rows>(`SELECT 1 FROM ${this.s}.subscriber WHERE username = ? UNION ALL SELECT 1 FROM ${this.r}.radcheck WHERE username = ? UNION ALL SELECT 1 FROM ${this.r}.radusergroup WHERE username = ? LIMIT 1 FOR UPDATE`, [b.username, b.username, b.username]);
-        if (taken.length) throw new Rejected(409, "USERNAME_TAKEN");
+        for (const table of [`${this.s}.subscriber`, `${this.r}.radcheck`, `${this.r}.radusergroup`]) {
+          const [taken] = await conn.execute<Rows>(`SELECT 1 FROM ${table} WHERE username = ? LIMIT 1 FOR UPDATE`, [b.username]);
+          if (taken.length) throw new Rejected(409, "USERNAME_TAKEN");
+        }
         const id = randomUUID();
         await conn.execute(`INSERT INTO ${this.s}.subscriber (id, username, full_name, plan_id, status, created_at, updated_at, expires_at) VALUES (?, ?, ?, ?, 'active', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3), NULL)`, [id, b.username, b.full_name, plan.id]);
         await conn.execute(`INSERT INTO ${this.r}.radcheck (username, attribute, op, value) VALUES (?, ?, ':=', ?)`, [b.username, attr, this.passwordValue(b.password)]);
