@@ -1,6 +1,7 @@
 /** Process entrypoint: env config, MariaDB pool, periodic schema check, plain HTTP behind a TLS reverse proxy. */
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { Readable } from "node:stream";
 import { createPool } from "mysql2/promise";
 import { loadConfig } from "./config.js";
 import { createHandler, type SafeLogEvent } from "./handler.js";
@@ -30,7 +31,9 @@ const server = createServer(async (req, res) => {
   try {
     const url = `http://internal${req.url ?? "/"}`;
     const hasBody = req.method !== "GET" && req.method !== "HEAD";
-    const request = new Request(url, { method: req.method, headers: req.headers as Record<string, string>, body: hasBody ? (req as unknown as ReadableStream) : undefined, duplex: "half" } as RequestInit);
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
+    const request = new Request(url, { method: req.method, headers, body: hasBody ? (Readable.toWeb(req) as ReadableStream) : undefined, duplex: "half" } as RequestInit);
     const response = await handler(request);
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));

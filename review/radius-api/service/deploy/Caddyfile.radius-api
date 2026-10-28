@@ -1,0 +1,34 @@
+# TLS terminates here (automatic ACME certificate). Replace the hostname with the confirmed API DNS name.
+{$RADIUS_API_HOSTNAME} {
+	@probe path /health
+	handle @probe {
+		respond 404
+	}
+	handle /v1/* {
+		reverse_proxy radius-api:8080
+	}
+	handle /ready {
+		reverse_proxy radius-api:8080
+	}
+	handle {
+		respond 404
+	}
+	request_body {
+		max_size 16KB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+		# Never log request bodies or Authorization headers.
+		format filter {
+			wrap json
+			fields {
+				request>headers>Authorization delete
+			}
+		}
+	}
+}
