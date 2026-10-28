@@ -1,42 +1,37 @@
-# Weonet RADIUS service — offline review scaffold
+# Weonet RADIUS Provisioning API
 
-**Review only, 2026-10-27. Nothing deployed or tested against a live API, database or NAS.**
+Separately deployable Node 22 service. **Not deployed. Never run against the live database from this repo.**
+Contract: `openapi.yaml`. Hub adapter (staged, not auto-deployed): `../index.ts`, `../signer.ts`.
 
-This standalone TypeScript package exports `createService` from `handler.ts`, an injected WHATWG Request/Response handler. It has **no listener/start command**, environment discovery, Docker configuration, database driver, SQL, fetch or production identity verifier. It imports none of the Hub or Supabase functions. A future owner-approved runtime wrapper is a separate review, not a missing setup step to perform now.
+## What it does
+- Routes: `GET /health`, `GET /ready`, `GET /v1/subscribers[/:id]`, `POST /v1/subscribers`, `PATCH /v1/subscribers/:id/status`, `PATCH /v1/subscribers/:id/plan`, `POST /v1/subscribers/:id/reset-password`, `GET /v1/plans`, `/v1/sessions`, `/v1/accounting`, `/v1/nas[/:id]`.
+- Auth: ES256/RS256 JWT verified with node:crypto against a configured public key, issuer, audience, subject; lifetime ≤300s; single-use `jti` stored durably; bound to method, path+query, SHA-256 of body, `X-Request-ID`, `Idempotency-Key`; actor = `act.sub` from the Hub (Supabase-verified user). Static bearer tokens are rejected. Writes need `radius:write` + admin/noc; reads need admin/noc/care.
+- Identity: API-owned `weonet_api.subscriber` (UUID). daloRADIUS `userinfo` is not used; `userbillinfo` is never touched (no grant).
+- Semantics (configured, checked at startup):
+  - Password: `RADIUS_PASSWORD_ATTRIBUTE` = `Cleartext-Password` (needed for PPPoE CHAP/MS-CHAP) or `SSHA2-512-Password` (PAP only). Written to `radcheck` with `:=`.
+  - Suspend: add `radusergroup(username, RADIUS_DISABLED_GROUP, priority 0)`; reactivate removes it. Writes are refused unless `radgroupcheck` has `Auth-Type := Reject` for that group (daloRADIUS default group name: `daloRADIUS-Disabled-Users`).
+  - Plan: `weonet_api.plan.groupname` → `radusergroup` priority 1; every enabled plan must map to an existing group. Plans with `expiry_days > 0` are refused (expiry enforcement not implemented).
+  - NAS status is always `unknown` (not derivable); NAS secret is blocked by a column grant.
+- Each mutation: intent audit row → one InnoDB transaction (idempotency row + RADIUS rows + applied audit) → commit. Same key + same request replays the stored response; different request → 409. Reset-password responses are never stored or replayed. Commit uncertainty → 500 `outcome: unknown`.
+- Writes stay off unless `RADIUS_WRITES_ENABLED=true` **and** the schema/grant check passes (rejects ALL PRIVILEGES, SUPER, GRANT OPTION, global grants).
 
-## Local checks
-
-From the existing project root, using already installed dependencies (no install or network access):
-
+## Local verification
 ```sh
-npm test -- --config vitest.config.ts --root review/radius-api/service
-tsgo --ignoreConfig --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler --lib ES2022,DOM,DOM.Iterable --types node --skipLibCheck review/radius-api/service/config.ts review/radius-api/service/schemas.ts review/radius-api/service/repositories.ts review/radius-api/service/handler.ts review/radius-api/service/handler.test.ts review/radius-api/service/vitest.config.ts
+cd review/radius-api/service && npm ci
+npx tsc -p tsconfig.json --noEmit
+npx vitest run --config vitest.config.ts            # unit + Hub adapter e2e
+# Optional: throwaway MariaDB integration (never a live server)
+RADIUS_IT_SOCKET=/path/to/throwaway.sock npx vitest run --config vitest.config.ts
 ```
 
-The package manifest permits local `npm test` when review dependencies are already available. Do not install/start this on the RADIUS host as part of this stage. Tests inject synthetic configuration/identity and constructed requests; test resource objects are never imported into the handler or returned by service routes. Exact observed results are in `RADIUS-CONTRACT-VERIFICATION.md` at the project root.
+## Deployment (owner actions, in order)
+1. Back up the RADIUS database. Confirm FreeRADIUS `sql` module reads groups from `radusergroup` and the PPP auth method (CHAP/MS-CHAP → Cleartext-Password).
+2. As DB admin: run `sql/001_state_schema.sql`; then `sql/002_grants.template.sql` with the API container's subnet pattern and an interactively chosen password. Insert plan rows mapping to existing groups; ensure the disabled group has `Auth-Type := Reject`.
+3. Generate an ES256 key pair off-host: `openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt -out hub.key && openssl ec -in hub.key -pubout -out radius_api_hub_public_key.pem`. Public key → `secrets/` on the host; private key → Hub secret `RADIUS_API_SIGNING_KEY` only. Delete local copies.
+4. Copy this folder to `./radius-api` beside the existing compose file, plus `deploy/docker-compose.radius-api.yml` and `deploy/Caddyfile.radius-api`; set `.env.radius-api` values and the external DB network name. Existing services are not modified.
+5. TLS: point the API hostname at the host; Caddy obtains a certificate via ACME (needs TCP 80/443 opened by the owner — consider restricting 443 to the Hub's egress if stable). Alternatively mount an existing certificate with `tls /path/cert /path/key`.
+6. `docker compose -f docker-compose.yml -f docker-compose.radius-api.yml up -d --build radius-api caddy`; check logs for `schema_check` reads/writes true. Keep `RADIUS_WRITES_ENABLED=false` until a staging subscriber passes create/suspend/reset with `radtest` and a real NAS.
+7. Hub: set secrets `RADIUS_API_BASE_URL`, `RADIUS_API_SIGNING_KEY`, `RADIUS_API_ISSUER`, `RADIUS_API_AUDIENCE`, `RADIUS_API_SERVICE_SUBJECT`, `RADIUS_API_ENABLED=true`; then copy `review/radius-api/*` into `supabase/functions/radius-api` and unlock `src/lib/radius/client.ts`.
 
-## Behavior and constraints
-
-- `GET /health`: generic process liveness only, 200 `data:{status:"ok",version:"1"}`; never implies database/network health.
-- `GET /ready`: generic 503 `NOT_READY`. Explicit required confirmations, verifier and implemented operations are prerequisites; the implementation gate is fixed false, so even fully populated test configuration cannot make this scaffold ready. No dependency addresses or reasons are exposed. Probe transport/auth/access are still owner decisions; no public listener is created.
-- Protected proposed `/v1` routes fail 503 when configuration/verifier is absent. Static bearer tokens are rejected; there is no `RADIUS_API_TOKEN` fallback. An injected verifier interface is **not** implemented JWT authentication: signature/key/issuer/algorithm/time/replay/delegation/request-binding verification still needs owner approval and implementation.
-- With synthetic verified identity, strict method/path/query/body/header validation and role/scope intersection are tested, but every subscriber, plan, session, accounting and NAS operation still returns non-success 503 `OPERATION_DISABLED`, `outcome:not_applied`, no `data`. Same-key repeat requests cannot mutate. No durable idempotency, audit or recovery implementation is claimed.
-- Closed inputs: 16 KiB body, UUID correlation/idempotency, fixed operations, bounded pagination/ranges/strings, no arbitrary table/SQL/RADIUS attributes/RouterOS commands. Output projection strips extra fields, validates real IP/UTC calendar values and safe integer counters. Reset credential projection is a proposed schema only, never reachable service success.
-- Logs contain only fixed event/status/code. Never log raw request/response, query, token, credential, config, identity or exceptions. This diagnostic callback is **not a durable audit store**.
-- `repositories.ts` contains interfaces only for the verified safe table names and nullable/non-unique `userinfo.username`. No inferred columns, subscriber identity mapping, NAS status interpretation or plan joins. No repository calls are made, and there is **no userbillinfo interface or access** and no RADIUS write interface.
-
-## User-verified live facts (not independently probed here)
-
-- API DNS resolves to the RADIUS instance; this alone does not establish an API service, TLS or reachability.
-- Current Docker Compose contains only `radius-mysql`, `radius`, `radius-web`; no provisioning API container was reported.
-- All inspected tables have zero rows: `radcheck`, `userinfo`, `userbillinfo`, `billing_plans`, `billing_plans_profiles`, `radusergroup`, `radacct`.
-- Every inspected table was reported with `Engine=InnoDB` in `SHOW TABLE STATUS`, so transactional engine support is available at the storage layer. The reported database server version is deliberately not recorded here.
-- `userinfo.username` has a nullable, non-unique index. It cannot be treated as a guaranteed unique subscriber identity.
-- `userbillinfo` has legacy credit-card fields: **never select, log or expose any of this table**.
-- Security group allows TCP 22 from all IPv4 sources and UDP 1812/1813 from a candidate single-source /32 only; TCP 80/443/3306 are not allowed. Candidate source identity is unconfirmed. No addresses, group IDs or other sensitive infrastructure identifiers are recorded here, and no rules were changed.
-
-## Exact blockers before another enabling stage
-
-Owner confirmation and evidence are required for RADIUS authentication/password representation and disable semantics; atomic multi-table operation with audit and idempotency guarantees (inspected tables are reported as InnoDB, so the storage layer supports transactions, but cross-table atomicity plus durable audit/idempotency behavior is unverified); plan-to-group mappings; API identity issuer, allowed algorithm and key source; least-privilege DB grants; TLS termination; durable idempotency/audit schema and recovery policy. Stable API IDs, subscriber uniqueness/NULL handling, NAS registry/status/freshness, accounting freshness/counter semantics, actual route/version contract and staging acceptance also remain unconfirmed under the parent contract.
-
-No schema migrations, production users/grants, ports, DNS/security-group changes or live calls are included. The existing Hub RADIUS client/page remain locked and unchanged. The legacy deployed Hub function's previously documented direct-call safety gaps remain unresolved; this scaffold does not remediate a deployed service.
+## User-verified facts (not probed here)
+Tables reported InnoDB, zero rows; `userinfo.username` nullable/non-unique; `userbillinfo` has legacy card fields (never accessed). No infrastructure identifiers are recorded.

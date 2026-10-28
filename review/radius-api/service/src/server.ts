@@ -26,7 +26,7 @@ else {
 const handler = createHandler({
   identity: loaded.ok ? loaded.config.identity : null, store, writesEnabled: loaded.ok && loaded.config.writesEnabled, schema: () => schema, log,
 });
-const port = loaded.ok ? loaded.config.port : 8080;
+const port = loaded.ok ? loaded.config.port : Number(process.env.RADIUS_API_PORT ?? 8080);
 const server = createServer(async (req, res) => {
   try {
     const url = `http://internal${req.url ?? "/"}`;
