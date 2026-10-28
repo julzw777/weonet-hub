@@ -22,7 +22,6 @@
 	}
 	log {
 		output stdout
-		format json
 		# Never log request bodies or Authorization headers.
 		format filter {
 			wrap json
