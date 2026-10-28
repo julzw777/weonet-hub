@@ -39,7 +39,7 @@ function session(v: unknown, accounting: boolean) {
     if (!(v.stopped_at === null || timestamp(v.stopped_at)) || !count(v.duration_s) || !(v.terminate_cause === null || text(v.terminate_cause))) throw new Error("Invalid accounting response");
     return { ...base, stopped_at: v.stopped_at, duration_s: v.duration_s, terminate_cause: v.terminate_cause };
   }
-  if (!ip(v.framed_ip)) throw new Error("Invalid session IP");
+  if (!(v.framed_ip === null || ip(v.framed_ip))) throw new Error("Invalid session IP");
   return { ...base, framed_ip: v.framed_ip };
 }
 function ip(v: unknown): v is string {
@@ -48,7 +48,7 @@ function ip(v: unknown): v is string {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(v) && v.split(".").every(n => Number(n) <= 255);
 }
 function nas(v: unknown) {
-  if (!record(v) || !id(v.id) || !text(v.name) || !ip(v.source_ip) || !["online", "offline"].includes(String(v.status))) throw new Error("Invalid NAS response");
+  if (!record(v) || !id(v.id) || !text(v.name) || !ip(v.source_ip) || !["online", "offline", "unknown"].includes(String(v.status))) throw new Error("Invalid NAS response");
   return { id: v.id, name: v.name, source_ip: v.source_ip, status: v.status };
 }
 /** Explicit field allowlists, including the ONLY permitted credential response. */

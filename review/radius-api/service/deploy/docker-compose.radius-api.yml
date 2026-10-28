@@ -1,0 +1,55 @@
+# Overlay: adds the provisioning API next to the existing radius-mysql / radius / radius-web services
+# without changing them. Use from the existing compose directory:
+#   docker compose -f docker-compose.yml -f docker-compose.radius-api.yml up -d --build radius-api caddy
+# Replace RADIUS_DB_NETWORK below with the existing network that radius-mysql is attached to
+# (`docker inspect radius-mysql --format '{{json .NetworkSettings.Networks}}'`).
+services:
+  radius-api:
+    build: { context: ./radius-api }   # copy review/radius-api/service here
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # No `ports:` — never published on the host. Only the reverse proxy reaches it.
+    environment:
+      RADIUS_API_ISSUER: ${RADIUS_API_ISSUER:?set in .env.radius-api}
+      RADIUS_API_AUDIENCE: ${RADIUS_API_AUDIENCE:?}
+      RADIUS_API_ALGORITHM: ES256
+      RADIUS_API_PUBLIC_KEY_FILE: /run/secrets/radius_api_hub_public_key
+      RADIUS_API_SERVICE_SUBJECT: ${RADIUS_API_SERVICE_SUBJECT:?}
+      RADIUS_DB_HOST: radius-mysql
+      RADIUS_DB_USER: weonet_api
+      RADIUS_DB_PASSWORD_FILE: /run/secrets/radius_api_db_password
+      RADIUS_DB_NAME: ${RADIUS_DB_NAME:?}
+      RADIUS_STATE_DB_NAME: weonet_api
+      RADIUS_DB_TIMEZONE: ${RADIUS_DB_TIMEZONE:?}
+      RADIUS_PASSWORD_ATTRIBUTE: ${RADIUS_PASSWORD_ATTRIBUTE:?}
+      RADIUS_DISABLED_GROUP: ${RADIUS_DISABLED_GROUP:?}
+      RADIUS_WRITES_ENABLED: ${RADIUS_WRITES_ENABLED:-false}
+    secrets: [radius_api_hub_public_key, radius_api_db_password]
+    networks: [radius_db, radius_api_edge]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["443:443", "80:80"]   # 80 only for ACME HTTP-01; requires security-group change (owner action)
+    volumes:
+      - ./Caddyfile.radius-api:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [radius_api_edge]
+
+secrets:
+  radius_api_hub_public_key: { file: ./secrets/radius_api_hub_public_key.pem }
+  radius_api_db_password: { file: ./secrets/radius_api_db_password }
+
+networks:
+  radius_db:
+    external: true
+    name: RADIUS_DB_NETWORK
+  radius_api_edge: {}
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

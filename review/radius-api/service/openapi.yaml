@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info: { title: Weonet RADIUS Provisioning API, version: "1", description: "Implemented in review/radius-api/service. Not deployed." }
+components:
+  securitySchemes:
+    serviceJwt: { type: http, scheme: bearer, bearerFormat: "ES256 JWT; claims iss aud sub iat exp(<=300s) jti act.sub roles scope htm htu bdh rid idk" }
+  parameters:
+    RequestId: { name: X-Request-ID, in: header, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+    Cursor: { name: cursor, in: query, schema: { type: string, pattern: "^[0-9]{1,19}$" } }
+  schemas:
+    Error: { type: object, properties: { error: { type: object, required: [code, message, outcome], properties: { code: { type: string }, message: { type: string }, request_id: { type: string }, retryable: { type: boolean }, outcome: { enum: [not_applied, unknown] } } } } }
+    Subscriber: { type: object, required: [id, username, full_name, plan_id, status, created_at, expires_at], properties: { id: { type: string }, username: { type: string, pattern: "^[a-z0-9._@-]{3,64}$" }, full_name: { type: string, maxLength: 120 }, plan_id: { type: string }, status: { enum: [active, suspended] }, created_at: { type: string, format: date-time }, expires_at: { type: [string, "null"] } } }
+    Plan: { type: object, properties: { id: { type: string }, name: { type: string }, speed_profile: { type: string }, session_limit: { type: integer }, expiry_days: { type: integer } } }
+    Session: { type: object, properties: { id: { type: string }, username: { type: string }, nas_name: { type: string }, started_at: { type: string }, input_octets: { type: integer }, output_octets: { type: integer }, framed_ip: { type: [string, "null"] } } }
+    Accounting: { allOf: [ { $ref: "#/components/schemas/Session" } ], properties: { stopped_at: { type: [string, "null"] }, duration_s: { type: integer }, terminate_cause: { type: [string, "null"] } } }
+    Nas: { type: object, properties: { id: { type: string }, name: { type: string }, source_ip: { type: string }, status: { const: unknown } } }
+    Page: { type: object, properties: { limit: { type: integer }, next_cursor: { type: [string, "null"] } } }
+security: [ { serviceJwt: [] } ]
+paths:
+  /health: { get: { security: [], responses: { "200": { description: liveness } } } }
+  /ready: { get: { security: [], responses: { "200": { description: "ready; data.reads / data.writes" }, "503": { description: not ready } } } }
+  /v1/subscribers:
+    get: { parameters: [ { $ref: "#/components/parameters/RequestId" }, { $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/Cursor" }, { name: search, in: query, schema: { type: string, maxLength: 64 } }, { name: status, in: query, schema: { enum: [active, suspended] } }, { name: plan_id, in: query, schema: { type: string } } ], responses: { "200": { description: page of Subscriber } } }
+    post:
+      parameters: [ { $ref: "#/components/parameters/RequestId" }, { $ref: "#/components/parameters/IdempotencyKey" } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [username, full_name, plan_id, password], properties: { username: { type: string }, full_name: { type: string }, plan_id: { type: string }, password: { type: string, minLength: 8, maxLength: 64 } } } } } }
+      responses: { "201": { description: created }, "409": { description: "USERNAME_TAKEN / IDEMPOTENCY_KEY_REUSED" }, "422": { description: "PLAN_NOT_FOUND / PLAN_EXPIRY_UNSUPPORTED" }, "503": { description: "WRITES_DISABLED / AUDIT_UNAVAILABLE" } }
+  /v1/subscribers/{id}: { get: { parameters: [ { $ref: "#/components/parameters/RequestId" }, { name: id, in: path, required: true, schema: { type: string } } ], responses: { "200": { description: Subscriber }, "404": { description: not found } } } }
+  /v1/subscribers/{id}/status: { patch: { parameters: [ { $ref: "#/components/parameters/RequestId" }, { $ref: "#/components/parameters/IdempotencyKey" }, { name: id, in: path, required: true, schema: { type: string } } ], requestBody: { content: { application/json: { schema: { type: object, properties: { status: { enum: [active, suspended] } } } } } }, responses: { "200": { description: Subscriber } } } }
+  /v1/subscribers/{id}/plan: { patch: { parameters: [ { $ref: "#/components/parameters/RequestId" }, { $ref: "#/components/parameters/IdempotencyKey" }, { name: id, in: path, required: true, schema: { type: string } } ], requestBody: { content: { application/json: { schema: { type: object, properties: { plan_id: { type: string } } } } } }, responses: { "200": { description: Subscriber } } } }
+  /v1/subscribers/{id}/reset-password: { post: { parameters: [ { $ref: "#/components/parameters/RequestId" }, { $ref: "#/components/parameters/IdempotencyKey" }, { name: id, in: path, required: true, schema: { type: string } } ], responses: { "200": { description: "data.temporary_password only; never replayed (409 CREDENTIAL_NOT_REPLAYED)" } } } }
+  /v1/plans: { get: { parameters: [ { $ref: "#/components/parameters/RequestId" } ], responses: { "200": { description: page of Plan } } } }
+  /v1/sessions: { get: { parameters: [ { $ref: "#/components/parameters/RequestId" } ], responses: { "200": { description: page of open Session } } } }
+  /v1/accounting: { get: { parameters: [ { $ref: "#/components/parameters/RequestId" }, { name: state, in: query, schema: { enum: [open, closed] } } ], responses: { "200": { description: page of Accounting } } } }
+  /v1/nas: { get: { parameters: [ { $ref: "#/components/parameters/RequestId" } ], responses: { "200": { description: page of Nas (no secret) } } } }
+  /v1/nas/{id}: { get: { parameters: [ { $ref: "#/components/parameters/RequestId" }, { name: id, in: path, required: true, schema: { type: string } } ], responses: { "200": { description: Nas } } } }
