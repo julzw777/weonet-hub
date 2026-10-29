@@ -1,6 +1,7 @@
 # Weonet remaining work
 
 ## RADIUS contract review (no deployment)
+- [ ] Continue local deployment-readiness hardening and regression checks; preserve Hub locks and all live-write boundaries.
 - [x] Real Provisioning API service + signed Hub adapter (staged); 37 service tests incl. throwaway MariaDB integration passed.
 - [ ] BLOCKED (owner): deploy API container + TLS proxy, run SQL as DB admin, add Hub signing secrets, verify with staging NAS/radtest, then unlock Hub client.
 - [x] Build and locally verify the standalone fail-closed service scaffold; 60 service tests, 21 Hub/staged-adapter regression tests and scoped type check passed; Hub locks unchanged.
