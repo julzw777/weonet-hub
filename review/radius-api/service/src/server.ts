@@ -16,9 +16,10 @@ if (!loaded.ok) log({ event: "config_invalid", variables: loaded.missing }); // 
 else {
   const c = loaded.config;
   const pool = createPool({ host: c.db.host, port: c.db.port, user: c.db.user, password: c.db.password, connectionLimit: 8, timezone: c.db.timezone, connectTimeout: 5000, supportBigNumbers: true, bigNumberStrings: true, multipleStatements: false, namedPlaceholders: false });
-  store = new MySqlStore(pool, c);
+  const configuredStore = new MySqlStore(pool, c);
+  store = configuredStore;
   const refresh = async () => {
-    try { schema = await store!.checkSchema(); log({ event: "schema_check", reads: schema.reads, writes: schema.writes, problems: schema.problems }); }
+    try { schema = await configuredStore.checkSchema(); log({ event: "schema_check", reads: schema.reads, writes: schema.writes, problems: schema.problems }); }
     catch { schema = null; log({ event: "schema_check_failed" }); }
   };
   void refresh(); setInterval(refresh, 60_000).unref();
@@ -26,7 +27,10 @@ else {
 const handler = createHandler({
   identity: loaded.ok ? loaded.config.identity : null, store, writesEnabled: loaded.ok && loaded.config.writesEnabled, schema: () => schema, log,
 });
-const port = loaded.ok ? loaded.config.port : Number(process.env.RADIUS_API_PORT ?? 8080);
+// Keep liveness available when invalid configuration includes an invalid listen port.
+const rawPort = process.env.RADIUS_API_PORT ?? "8080";
+const fallbackPort = /^\d{1,5}$/.test(rawPort) && Number(rawPort) >= 1 && Number(rawPort) <= 65535 ? Number(rawPort) : 8080;
+const port = loaded.ok ? loaded.config.port : fallbackPort;
 const server = createServer(async (req, res) => {
   try {
     const url = `http://internal${req.url ?? "/"}`;

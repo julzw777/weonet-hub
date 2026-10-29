@@ -4,15 +4,16 @@ import { z } from "zod";
 import type { IdentityConfig } from "./jwt.js";
 
 const ident = z.string().regex(/^[A-Za-z0-9_]{1,64}$/);
+const port = z.string().regex(/^\d{1,5}$/).refine(v => Number(v) >= 1 && Number(v) <= 65535);
 const envSchema = z.object({
-  RADIUS_API_PORT: z.string().regex(/^\d{2,5}$/).default("8080"),
+  RADIUS_API_PORT: port.default("8080"),
   RADIUS_API_ISSUER: z.string().url().refine(v => v.startsWith("https://")),
   RADIUS_API_AUDIENCE: z.string().min(8).max(200),
   RADIUS_API_ALGORITHM: z.enum(["ES256", "RS256"]),
   RADIUS_API_PUBLIC_KEY_FILE: z.string().min(1),
   RADIUS_API_SERVICE_SUBJECT: z.string().min(1).max(200),
   RADIUS_DB_HOST: z.string().regex(/^[A-Za-z0-9.-]{1,253}$/),
-  RADIUS_DB_PORT: z.string().regex(/^\d{2,5}$/).default("3306"),
+  RADIUS_DB_PORT: port.default("3306"),
   RADIUS_DB_USER: z.string().regex(/^[A-Za-z0-9_]{1,32}$/).refine(v => v.toLowerCase() !== "root", "root is forbidden"),
   RADIUS_DB_PASSWORD_FILE: z.string().min(1),
   RADIUS_DB_NAME: ident,

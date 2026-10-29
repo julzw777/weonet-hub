@@ -22,4 +22,8 @@ describe("config", () => {
   });
   it("rejects a key that does not match the algorithm", () =>
     expect(loadConfig({ ...env, RADIUS_API_ALGORITHM: "RS256" }, files)).toEqual({ ok: false, missing: ["RADIUS_API_PUBLIC_KEY_FILE"] }));
+  it.each(["0", "65536", "99999", "-1", "abc"])("rejects invalid TCP port %s", value => {
+    expect(loadConfig({ ...env, RADIUS_API_PORT: value }, files)).toEqual({ ok: false, missing: ["RADIUS_API_PORT"] });
+    expect(loadConfig({ ...env, RADIUS_DB_PORT: value }, files)).toEqual({ ok: false, missing: ["RADIUS_DB_PORT"] });
+  });
 });

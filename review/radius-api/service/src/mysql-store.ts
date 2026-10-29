@@ -90,7 +90,7 @@ export class MySqlStore implements Store {
         await conn.rollback();
         const p = prior[0];
         const code = p.actor_id !== m.actorId || p.operation !== m.operation || p.request_hash !== m.requestHash ? "IDEMPOTENCY_KEY_REUSED" : p.credential_issued ? "CREDENTIAL_NOT_REPLAYED" : null;
-        await this.audit(this.pool, m, code ? "rejected" : "applied", code ?? "IDEMPOTENT_REPLAY").catch(() => undefined);
+        await this.auditOnly(m, code ? "rejected" : "applied", code ?? "IDEMPOTENT_REPLAY");
         return code ? { kind: "rejected", status: 409, code } : { kind: "replay", status: p.response_status, body: JSON.parse(p.response_body) };
       }
       const { status, body, credential } = await this.apply(conn, input);
@@ -101,16 +101,23 @@ export class MySqlStore implements Store {
       return { kind: "applied", status, body };
     } catch (e) {
       if (!committed && !(e instanceof OutcomeUnknownError)) await conn.rollback().catch(() => undefined);
+      if (e instanceof AuditUnavailableError) throw e;
       if (e instanceof Rejected) {
         try { await this.audit(this.pool, m, "rejected", e.code); } catch { throw new AuditUnavailableError(); }
         return { kind: "rejected", status: e.status, code: e.code };
       }
       // Duplicate idempotency key inserted concurrently: the other request won; report conflict, not success.
       if ((e as { code?: string }).code === "ER_DUP_ENTRY") {
-        await this.audit(this.pool, m, "rejected", "CONCURRENT_REQUEST").catch(() => undefined);
+        await this.auditOnly(m, "rejected", "CONCURRENT_REQUEST");
         return { kind: "rejected", status: 409, code: "CONCURRENT_REQUEST" };
       }
-      await this.audit(this.pool, m, e instanceof OutcomeUnknownError ? "unknown" : "failed", e instanceof OutcomeUnknownError ? "COMMIT_UNCONFIRMED" : "DB_ERROR").catch(() => undefined);
+      try {
+        await this.auditOnly(m, e instanceof OutcomeUnknownError ? "unknown" : "failed", e instanceof OutcomeUnknownError ? "COMMIT_UNCONFIRMED" : "DB_ERROR");
+      } catch {
+        // A failed completion audit must not hide an uncertain commit outcome.
+        if (e instanceof OutcomeUnknownError) throw e;
+        throw new AuditUnavailableError();
+      }
       if (e instanceof OutcomeUnknownError) throw e;
       throw new Error("mutation failed");
     } finally { conn.release(); }

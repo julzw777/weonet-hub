@@ -2,6 +2,47 @@
 
 **PROPOSED / UNCONFIRMED. Local checks only. No deployment, publication, external endpoint probing or production writes.**
 
+## 2026-10-29 — local deployment-readiness hardening
+
+This section is current; the scaffold-only descriptions below are historical and do not describe the current `service/src` implementation. The service now contains a separately deployable Node runtime, signed service-token verifier and MariaDB store, plus proposed OpenAPI and deployment artifacts. None is deployed or owner-accepted here.
+
+### Changes in this continuation
+
+- `service/src/mysql-store.ts`: checked completion audits for idempotent replay, reused/credential keys, concurrency conflicts and failed operations. No success/replay response escapes a failed audit; uncertain commit remains unknown even when recovery audit fails.
+- `service/src/handler.ts`: write-enabled readiness requires a passing write schema; read-only readiness remains available with a read-safe schema. Removed non-null assertions in touched flow.
+- `service/src/config.ts`, `server.ts`: reject TCP ports outside 1–65535; invalid listen configuration uses the safe liveness port while protected routes remain unconfigured.
+- `service/test/mysql-store-audit.test.ts`, `config.test.ts`, `handler.test.ts`: injected audit/commit faults, readiness gates, concrete port bounds and role denial checks.
+- `service/deploy/docker-compose.radius-api.yml`: explicitly pass the confirmed hostname to Caddy and require the existing private network name. `service/.dockerignore` excludes secret/key/env files, dependencies and tests from the image context.
+- Root `vitest.config.ts`: Hub and standalone service suites run separately; the service owns its dependencies and optional DB fixtures. `AGENTS.md`, `roadmap.md` and service README updated accordingly.
+
+### Exact observed verification
+
+From `review/radius-api/service`: `npm ci --no-audit --no-fund` — exit 0, 70 local package dependencies installed.
+
+From `review/radius-api/service`: `npm test` — exit 0:
+
+```text
+Test Files  4 passed | 1 skipped (5)
+     Tests  54 passed | 6 skipped (60)
+```
+
+Includes three in-process signed Hub adapter → API checks and seven injected storage fault tests. The six throwaway-MariaDB tests were **not run**; no socket was supplied. Mocked connections prove failure handling, not real storage atomicity or FreeRADIUS behavior.
+
+From root: `npm test` — exit 0:
+
+```text
+Test Files  14 passed (14)
+     Tests  117 passed (117)
+```
+
+Before dependency setup, a baseline root run passed 148 tests but failed collection of the optional MariaDB suite because the standalone `mysql2` dependency was missing. An initial service command also duplicated `--config` and failed before collection; corrected to `npm test`. Suites are now intentionally separated, so counts should not be compared to historical combined runs as removed coverage.
+
+`sha256sum src/lib/radius/client.ts src/pages/Radius.tsx supabase/functions/radius-api/index.ts` matched pre-edit hashes for all three files. Hub browser lock, page and auto-deployed function remain unchanged. No manual build/typecheck was run under harness-only verification rules. The automatic preview build log reports **build OK** at `2026-10-29T11:18:06Z`; this does not verify the standalone service's TypeScript compilation or Docker image. Docker build/Compose validation and signed-in/live acceptance were not run.
+
+### Remaining owner gates
+
+Confirm actual SQL/auth/password and disabled-group evaluation; validate plan speed/session enforcement (stored descriptive metadata alone does not prove enforcement) and expiry limitations. Review least-privilege grants and actual schema constraints, transaction/audit/idempotency recovery, backup/rollback, signing identity/key rotation and clock synchronization. Provision approved private-network access, secret files, TLS and deployment settings; run an explicitly authorized staging subscriber/NAS acceptance before enabling writes or deploying/unlocking the Hub adapter. Existing deployed Edge Function direct-call risks remain unfixed. No production migration, DB grant, live request, firewall/DNS change, publication or deployment occurred.
+
 ## 2026-10-27 — standalone offline service increment
 
 New package under `review/radius-api/service/`: `config.ts`, `schemas.ts`, `repositories.ts`, `handler.ts`, `handler.test.ts`, `vitest.config.ts`, `package.json`, `README.md`. Architecture/tracking updates: `AGENTS.md`, `roadmap.md`. No changes to the existing Hub client/page or any file under `supabase/functions`; no migrations or DB grants.

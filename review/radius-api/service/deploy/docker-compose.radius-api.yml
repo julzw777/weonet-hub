@@ -1,6 +1,7 @@
 # Overlay: adds the provisioning API next to the existing radius-mysql / radius / radius-web services
 # without changing them. Use from the existing compose directory:
 #   docker compose -f docker-compose.yml -f docker-compose.radius-api.yml up -d --build radius-api caddy
+# Supply --env-file .env.radius-api for every compose command.
 # Replace RADIUS_DB_NETWORK below with the existing network that radius-mysql is attached to
 # (`docker inspect radius-mysql --format '{{json .NetworkSettings.Networks}}'`).
 services:
@@ -34,6 +35,8 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports: ["443:443", "80:80"]   # 80 only for ACME HTTP-01; requires security-group change (owner action)
+    environment:
+      RADIUS_API_HOSTNAME: ${RADIUS_API_HOSTNAME:?set confirmed API hostname in .env.radius-api}
     volumes:
       - ./Caddyfile.radius-api:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -47,7 +50,7 @@ secrets:
 networks:
   radius_db:
     external: true
-    name: RADIUS_DB_NETWORK
+    name: ${RADIUS_DB_NETWORK:?set the existing private DB network name}
   radius_api_edge: {}
 
 volumes:
