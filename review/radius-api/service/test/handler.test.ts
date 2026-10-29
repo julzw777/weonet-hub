@@ -38,6 +38,21 @@ describe("liveness / readiness", () => {
     expect((await call(deps({ identity: null, store }), await signedRequest({ path: "/v1/subscribers" }))).status).toBe(503);
     expect(store.calls).toEqual([]);
   });
+  it("write-enabled readiness fails closed when the write schema is unavailable", async () => {
+    const d = deps({ schema: () => ({ reads: true, writes: false, problems: ["private-detail"] }) });
+    const result = await call(d, new Request("http://x/ready"));
+    expect(result.status).toBe(503);
+    expect(result.body.error.code).toBe("NOT_READY");
+    expect(JSON.stringify(result.body)).not.toContain("private-detail");
+  });
+  it("read-only readiness remains available with a read-safe schema", async () => {
+    const result = await call(deps({ writesEnabled: false, schema: () => ({ reads: true, writes: false, problems: [] }) }), new Request("http://x/ready"));
+    expect(result.status).toBe(200);
+    expect(result.body.data.writes).toBe(false);
+  });
+  it("readiness fails when schema checks have not completed", async () => {
+    expect((await call(deps({ schema: () => null }), new Request("http://x/ready"))).status).toBe(503);
+  });
 });
 
 describe("service authentication", () => {
@@ -83,6 +98,22 @@ describe("authorization", () => {
   it("writes disabled by config returns 503 not_applied", async () => {
     const r = await call(deps({ writesEnabled: false }), await signedRequest({ method: "PATCH", path: `/v1/subscribers/${sub.id}/status`, body: { status: "suspended" } }));
     expect(r.status).toBe(503); expect(r.body.error).toMatchObject({ code: "WRITES_DISABLED", outcome: "not_applied" });
+  });
+  it.each(["admin", "noc", "care"])("%s with read scope may read", async role => {
+    expect((await call(deps(), await signedRequest({ path: "/v1/plans", roles: [role], write: false }))).status).toBe(200);
+  });
+  it.each(["finance", "tech", "warehouse", "readonly"])("%s cannot mutate", async role => {
+    const store = fakeStore();
+    const result = await call(deps({ store }), await signedRequest({ method: "POST", path: `/v1/subscribers/${sub.id}/reset-password`, roles: [role] }));
+    expect(result.status).toBe(403);
+    expect(store.calls).toContain("audit:denied:FORBIDDEN");
+    expect(store.calls.some(c => c.startsWith("mutate"))).toBe(false);
+  });
+  it("denial audit failure reports unavailable, never an ordinary denial or credential", async () => {
+    const result = await call(deps({ store: fakeStore({ auditOnly: async () => { throw new AuditUnavailableError(); } }) }), await signedRequest({ method: "POST", path: `/v1/subscribers/${sub.id}/reset-password`, roles: ["care"] }));
+    expect(result.status).toBe(503);
+    expect(result.body.error).toMatchObject({ code: "AUDIT_UNAVAILABLE", outcome: "not_applied" });
+    expect(result.body.data).toBeUndefined();
   });
 });
 
