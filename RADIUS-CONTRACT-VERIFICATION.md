@@ -37,7 +37,7 @@ Test Files  14 passed (14)
 
 Before dependency setup, a baseline root run passed 148 tests but failed collection of the optional MariaDB suite because the standalone `mysql2` dependency was missing. An initial service command also duplicated `--config` and failed before collection; corrected to `npm test`. Suites are now intentionally separated, so counts should not be compared to historical combined runs as removed coverage.
 
-`sha256sum src/lib/radius/client.ts src/pages/Radius.tsx supabase/functions/radius-api/index.ts` matched pre-edit hashes for all three files. Hub browser lock, page and auto-deployed function remain unchanged. No manual build/typecheck was run under harness-only verification rules; current type/build results must not be inferred from the passing tests. Docker build/Compose validation and signed-in/live acceptance were not run.
+`sha256sum src/lib/radius/client.ts src/pages/Radius.tsx supabase/functions/radius-api/index.ts` matched pre-edit hashes for all three files. Hub browser lock, page and auto-deployed function remain unchanged. No manual build/typecheck was run under harness-only verification rules. The automatic preview build log reports **build OK** at `2026-10-29T11:18:06Z`; this does not verify the standalone service's TypeScript compilation or Docker image. Docker build/Compose validation and signed-in/live acceptance were not run.
 
 ### Remaining owner gates
 
