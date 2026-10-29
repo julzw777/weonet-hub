@@ -51,6 +51,7 @@ export function createHandler(deps: Dependencies) {
       const s = deps.schema();
       const reads = Boolean(deps.identity && deps.store && s?.reads);
       const writes = reads && deps.writesEnabled && Boolean(s?.writes);
+      if (deps.writesEnabled && !writes) return fail(503, "NOT_READY");
       return reads ? json({ data: { status: "ready", version: "1", reads, writes } }, 200) : fail(503, "NOT_READY");
     }
     if (!deps.identity || !deps.store || !deps.schema()?.reads) return fail(503, "UNCONFIGURED");
@@ -88,9 +89,12 @@ export function createHandler(deps: Dependencies) {
       return read(route, parsed.query, store, rid, fail);
     }
 
+    if (!idempotencyKey) return fail(400, "INVALID_REQUEST", rid);
+    const target = route.target;
+    if (route.operation !== "create_subscriber" && !target) return fail(400, "INVALID_REQUEST", rid);
     const meta: MutationMeta = {
       operation: route.operation, target: route.target ?? null, actorId: identity.actorId, actorRoles: identity.roles, serviceSubject: identity.serviceSubject,
-      requestId: rid, idempotencyKey: idempotencyKey!, requestHash: createHash("sha256").update(`${request.method}\n${url.pathname}\n`).update(bytes).digest("hex"),
+      requestId: rid, idempotencyKey, requestHash: createHash("sha256").update(`${request.method}\n${url.pathname}\n`).update(bytes).digest("hex"),
     };
     const gate = !allowedRole || !allowedScope ? [403, "FORBIDDEN"] as const : !deps.writesEnabled || !deps.schema()?.writes ? [503, "WRITES_DISABLED"] as const : null;
     if (gate) {
@@ -98,9 +102,9 @@ export function createHandler(deps: Dependencies) {
       return fail(gate[0], gate[1], rid, "not_applied", route.operation);
     }
     const input: MutationInput = route.operation === "create_subscriber" ? { op: "create_subscriber", body: parsed.body as CreateBody }
-      : route.operation === "set_status" ? { op: "set_status", id: route.target!, status: (parsed.body as { status: "active" | "suspended" }).status }
-      : route.operation === "set_plan" ? { op: "set_plan", id: route.target!, planId: (parsed.body as { plan_id: string }).plan_id }
-      : { op: "reset_password", id: route.target! };
+      : route.operation === "set_status" && target ? { op: "set_status", id: target, status: (parsed.body as { status: "active" | "suspended" }).status }
+      : route.operation === "set_plan" && target ? { op: "set_plan", id: target, planId: (parsed.body as { plan_id: string }).plan_id }
+      : { op: "reset_password", id: target ?? "" };
     try {
       const result = await store.mutate(meta, input);
       if (result.kind === "rejected") return fail(result.status, result.code, rid, "not_applied", route.operation);
@@ -119,7 +123,8 @@ async function read(route: Route, q: Record<string, string>, store: Store, rid: 
     let out: unknown;
     switch (route.operation) {
       case "get_subscriber": case "get_nas": {
-        const row = route.operation === "get_subscriber" ? await store.getSubscriber(route.target!) : await store.getNas(route.target!);
+        if (!route.target) return fail(400, "INVALID_REQUEST", rid);
+        const row = route.operation === "get_subscriber" ? await store.getSubscriber(route.target) : await store.getNas(route.target);
         if (!row) return fail(404, "NOT_FOUND", rid);
         out = { data: row };
         break;
