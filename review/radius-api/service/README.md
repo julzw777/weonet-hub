@@ -20,7 +20,7 @@ Contract: `openapi.yaml`. Hub adapter (staged, not auto-deployed): `../index.ts`
 ```sh
 cd review/radius-api/service && npm ci
 npm test                                         # unit + Hub adapter e2e; MariaDB tests skip without socket
-# Type verification is supplied by the project harness; do not manually build the Hub.
+npm run typecheck                                # standalone service only; not a Hub build
 # Optional: throwaway MariaDB integration (never a live server)
 RADIUS_IT_SOCKET=/path/to/throwaway.sock npx vitest run --config vitest.config.ts
 ```
