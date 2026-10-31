@@ -122,10 +122,10 @@ export class MySqlStore implements Store {
       await conn.execute(`INSERT INTO ${this.s}.idempotency (idem_key, actor_id, operation, request_hash, response_status, response_body, credential_issued, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3))`,
         [m.idempotencyKey, m.actorId, m.operation, m.requestHash, status, credential ? null : JSON.stringify(body), credential ? 1 : 0]);
       await this.audit(conn, m, "applied", "OK");
-      try { await conn.commit(); committed = true; } catch { throw new OutcomeUnknownError(); }
+      try { await conn.commit(); committed = true; } catch { destroy = true; throw new OutcomeUnknownError(); }
       return { kind: "applied", status, body };
     } catch (e) {
-      if (!committed && !(e instanceof OutcomeUnknownError)) await conn.rollback().catch(() => undefined);
+      if (!committed && !(e instanceof OutcomeUnknownError)) await conn.rollback().catch(() => { destroy = true; });
       if (e instanceof AuditUnavailableError) throw e;
       if (e instanceof Rejected) {
         try { await this.audit(this.pool, m, "rejected", e.code); } catch { throw new AuditUnavailableError(); }
