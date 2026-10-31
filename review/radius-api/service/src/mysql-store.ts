@@ -22,6 +22,17 @@ const REQUIRED_WRITE: Record<string, string[]> = {
   radgroupreply: ["groupname", "attribute", "op", "value"],
 };
 const STATE_TABLES = ["subscriber", "plan", "idempotency", "audit_log", "token_jti"];
+const STATE_COLUMNS: Record<string, string[]> = {
+  subscriber: ["seq", "id", "username", "full_name", "plan_id", "status", "created_at", "updated_at", "expires_at"],
+  plan: ["seq", "id", "name", "groupname", "speed_profile", "session_limit", "expiry_days", "enabled"],
+  idempotency: ["idem_key", "actor_id", "operation", "request_hash", "response_status", "response_body", "credential_issued", "created_at"],
+  audit_log: ["id", "at", "service_subject", "actor_id", "actor_roles", "operation", "target", "request_id", "idempotency_key", "outcome", "code", "detail"],
+  token_jti: ["jti", "expires_at"],
+};
+/** Columns that MUST be covered by a unique index, or single-use jti / idempotency / identity are not enforced. */
+const REQUIRED_UNIQUE: Record<string, string[]> = {
+  subscriber: ["id", "username"], plan: ["id", "groupname"], idempotency: ["idem_key"], audit_log: ["id"], token_jti: ["jti"],
+};
 
 /** FreeRADIUS SSHA2-512-Password: base64(SHA-512(password || salt) || salt). */
 export function ssha512(password: string, salt = randomBytes(16)) {
