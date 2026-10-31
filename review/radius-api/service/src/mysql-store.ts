@@ -106,6 +106,8 @@ export class MySqlStore implements Store {
     try { await this.audit(this.pool, m, "started", "INTENT"); } catch { throw new AuditUnavailableError(); }
     const conn = await this.pool.getConnection();
     let committed = false;
+    // A connection with an uncertain commit or failed rollback must never return to the pool.
+    let destroy = false;
     try {
       await conn.beginTransaction();
       const [prior] = await conn.execute<Rows>(`SELECT actor_id, operation, request_hash, response_status, response_body, credential_issued FROM ${this.s}.idempotency WHERE idem_key = ? FOR UPDATE`, [m.idempotencyKey]);
