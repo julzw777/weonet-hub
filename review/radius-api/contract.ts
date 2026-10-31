@@ -109,8 +109,14 @@ export async function executeDraft(request: DraftRequest, deps: DraftDependencie
     return failure(request, 502, "UPSTREAM_OUTCOME_UNKNOWN", "No confirmed response; reconcile before retrying with the same key", "unknown");
   }
   if (!res.ok) {
+    // Only these statuses are definite rejections. Anything else (5xx, unexpected codes) means the
+    // mutation may have committed: report outcome "unknown", forbid retry with a new key.
+    if (![400, 401, 403, 404, 409, 422, 429, 503].includes(res.status)) {
+      try { await audit("unknown", res.status); } catch { return failure(request, 503, "AUDIT_RECONCILIATION_REQUIRED", "Outcome may be unknown and audit completion failed; reconcile using the request ID", "unknown"); }
+      return failure(request, 502, "UPSTREAM_OUTCOME_UNKNOWN", "Upstream outcome is unconfirmed; reconcile using the request ID before any retry", "unknown");
+    }
     try { await audit("failed", res.status); } catch { return failure(request, 503, "AUDIT_RECONCILIATION_REQUIRED", "Audit completion failed; reconcile using the request ID", "unknown"); }
-    return failure(request, [400, 401, 403, 404, 409, 422, 429, 503].includes(res.status) ? res.status : 502, "UPSTREAM_REJECTED", "Provisioning API rejected the request", "rejected");
+    return failure(request, res.status, "UPSTREAM_REJECTED", "Provisioning API rejected the request", "rejected");
   }
   let safe: Record<string, unknown>;
   try { safe = validateResponse(request.op, raw); } catch {

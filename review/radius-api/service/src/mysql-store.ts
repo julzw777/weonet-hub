@@ -22,6 +22,17 @@ const REQUIRED_WRITE: Record<string, string[]> = {
   radgroupreply: ["groupname", "attribute", "op", "value"],
 };
 const STATE_TABLES = ["subscriber", "plan", "idempotency", "audit_log", "token_jti"];
+const STATE_COLUMNS: Record<string, string[]> = {
+  subscriber: ["seq", "id", "username", "full_name", "plan_id", "status", "created_at", "updated_at", "expires_at"],
+  plan: ["seq", "id", "name", "groupname", "speed_profile", "session_limit", "expiry_days", "enabled"],
+  idempotency: ["idem_key", "actor_id", "operation", "request_hash", "response_status", "response_body", "credential_issued", "created_at"],
+  audit_log: ["id", "at", "service_subject", "actor_id", "actor_roles", "operation", "target", "request_id", "idempotency_key", "outcome", "code", "detail"],
+  token_jti: ["jti", "expires_at"],
+};
+/** Columns that MUST be covered by a unique index, or single-use jti / idempotency / identity are not enforced. */
+const REQUIRED_UNIQUE: Record<string, string[]> = {
+  subscriber: ["id", "username"], plan: ["id", "groupname"], idempotency: ["idem_key"], audit_log: ["id"], token_jti: ["jti"],
+};
 
 /** FreeRADIUS SSHA2-512-Password: base64(SHA-512(password || salt) || salt). */
 export function ssha512(password: string, salt = randomBytes(16)) {
@@ -46,15 +57,27 @@ export class MySqlStore implements Store {
     const [cols] = await this.pool.query<Rows>("SELECT TABLE_SCHEMA t_schema, TABLE_NAME t, COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA IN (?, ?)", [this.cfg.db.radiusDb, this.cfg.db.stateDb]);
     const has = (schema: string, t: string, c?: string) => cols.some(x => x.t_schema === schema && x.t === t && (!c || x.c === c));
     const need = (spec: Record<string, string[]>) => Object.entries(spec).every(([t, cs]) => cs.every(c => has(this.cfg.db.radiusDb, t, c) || (problems.push(`missing:${t}.${c}`), false)));
-    if (has(this.cfg.db.radiusDb, "nas", "secret")) problems.push("nas.secret_readable");
-    const readsOk = need(REQUIRED_READ) && STATE_TABLES.every(t => has(this.cfg.db.stateDb, t) || (problems.push(`missing:state.${t}`), false));
+    // A readable nas.secret column means the account is NOT least-privilege: fail reads and writes.
+    const secretExposed = has(this.cfg.db.radiusDb, "nas", "secret");
+    if (secretExposed) problems.push("nas.secret_readable");
+    const stateShapeOk = STATE_TABLES.every(t => {
+      if (!has(this.cfg.db.stateDb, t)) return problems.push(`missing:state.${t}`), false;
+      return STATE_COLUMNS[t].every(c => has(this.cfg.db.stateDb, t, c) || (problems.push(`missing:state.${t}.${c}`), false));
+    });
+    const readsOk = !secretExposed && need(REQUIRED_READ) && stateShapeOk;
     let writesOk = need(REQUIRED_WRITE);
     const [engines] = await this.pool.query<Rows>("SELECT TABLE_SCHEMA t_schema, TABLE_NAME t, ENGINE e FROM information_schema.TABLES WHERE TABLE_SCHEMA IN (?, ?)", [this.cfg.db.radiusDb, this.cfg.db.stateDb]);
     for (const e of engines) if (["radcheck", "radusergroup", ...STATE_TABLES].includes(e.t) && e.e !== "InnoDB") { writesOk = false; problems.push(`engine:${e.t}`); }
+    // Unique-index enforcement: without these, single-use jti, idempotency and identity are advisory only.
+    const [idx] = await this.pool.query<Rows>("SELECT TABLE_NAME t, COLUMN_NAME c FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND NON_UNIQUE = 0", [this.cfg.db.stateDb]);
+    for (const [t, cols] of Object.entries(REQUIRED_UNIQUE))
+      for (const c of cols) if (!idx.some(x => x.t === t && x.c === c)) { writesOk = false; problems.push(`state_index:${t}.${c}`); }
     const [grants] = await this.pool.query<Rows>("SHOW GRANTS FOR CURRENT_USER()");
     for (const g of grants) {
       const line = String(Object.values(g)[0]).toUpperCase();
       if (/ALL PRIVILEGES|SUPER|WITH GRANT OPTION|\bFILE\b|CREATE USER/.test(line) || (/ ON \*\.\* /.test(line) && !/^GRANT USAGE ON \*\.\*/.test(line))) { writesOk = false; problems.push("grants:excessive"); }
+      // A grant line without ON is a role assignment; inherited role privileges cannot be verified here.
+      if (!/ ON /.test(line)) { writesOk = false; problems.push("grants:role_unresolved"); }
     }
     if (writesOk) {
       const [rej] = await this.pool.query<Rows>(`SELECT 1 FROM ${this.r}.radgroupcheck WHERE groupname = ? AND attribute = 'Auth-Type' AND op = ':=' AND value = 'Reject' LIMIT 1`, [this.cfg.semantics.disabledGroup]);
@@ -83,6 +106,8 @@ export class MySqlStore implements Store {
     try { await this.audit(this.pool, m, "started", "INTENT"); } catch { throw new AuditUnavailableError(); }
     const conn = await this.pool.getConnection();
     let committed = false;
+    // A connection with an uncertain commit or failed rollback must never return to the pool.
+    let destroy = false;
     try {
       await conn.beginTransaction();
       const [prior] = await conn.execute<Rows>(`SELECT actor_id, operation, request_hash, response_status, response_body, credential_issued FROM ${this.s}.idempotency WHERE idem_key = ? FOR UPDATE`, [m.idempotencyKey]);
@@ -97,10 +122,10 @@ export class MySqlStore implements Store {
       await conn.execute(`INSERT INTO ${this.s}.idempotency (idem_key, actor_id, operation, request_hash, response_status, response_body, credential_issued, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3))`,
         [m.idempotencyKey, m.actorId, m.operation, m.requestHash, status, credential ? null : JSON.stringify(body), credential ? 1 : 0]);
       await this.audit(conn, m, "applied", "OK");
-      try { await conn.commit(); committed = true; } catch { throw new OutcomeUnknownError(); }
+      try { await conn.commit(); committed = true; } catch { destroy = true; throw new OutcomeUnknownError(); }
       return { kind: "applied", status, body };
     } catch (e) {
-      if (!committed && !(e instanceof OutcomeUnknownError)) await conn.rollback().catch(() => undefined);
+      if (!committed && !(e instanceof OutcomeUnknownError)) await conn.rollback().catch(() => { destroy = true; });
       if (e instanceof AuditUnavailableError) throw e;
       if (e instanceof Rejected) {
         try { await this.audit(this.pool, m, "rejected", e.code); } catch { throw new AuditUnavailableError(); }
@@ -120,7 +145,7 @@ export class MySqlStore implements Store {
       }
       if (e instanceof OutcomeUnknownError) throw e;
       throw new Error("mutation failed");
-    } finally { conn.release(); }
+    } finally { if (destroy) conn.destroy(); else conn.release(); }
   }
 
   private async lockSubscriber(conn: PoolConnection, id: string) {
