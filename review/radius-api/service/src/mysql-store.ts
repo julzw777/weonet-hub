@@ -57,15 +57,27 @@ export class MySqlStore implements Store {
     const [cols] = await this.pool.query<Rows>("SELECT TABLE_SCHEMA t_schema, TABLE_NAME t, COLUMN_NAME c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA IN (?, ?)", [this.cfg.db.radiusDb, this.cfg.db.stateDb]);
     const has = (schema: string, t: string, c?: string) => cols.some(x => x.t_schema === schema && x.t === t && (!c || x.c === c));
     const need = (spec: Record<string, string[]>) => Object.entries(spec).every(([t, cs]) => cs.every(c => has(this.cfg.db.radiusDb, t, c) || (problems.push(`missing:${t}.${c}`), false)));
-    if (has(this.cfg.db.radiusDb, "nas", "secret")) problems.push("nas.secret_readable");
-    const readsOk = need(REQUIRED_READ) && STATE_TABLES.every(t => has(this.cfg.db.stateDb, t) || (problems.push(`missing:state.${t}`), false));
+    // A readable nas.secret column means the account is NOT least-privilege: fail reads and writes.
+    const secretExposed = has(this.cfg.db.radiusDb, "nas", "secret");
+    if (secretExposed) problems.push("nas.secret_readable");
+    const stateShapeOk = STATE_TABLES.every(t => {
+      if (!has(this.cfg.db.stateDb, t)) return problems.push(`missing:state.${t}`), false;
+      return STATE_COLUMNS[t].every(c => has(this.cfg.db.stateDb, t, c) || (problems.push(`missing:state.${t}.${c}`), false));
+    });
+    const readsOk = !secretExposed && need(REQUIRED_READ) && stateShapeOk;
     let writesOk = need(REQUIRED_WRITE);
     const [engines] = await this.pool.query<Rows>("SELECT TABLE_SCHEMA t_schema, TABLE_NAME t, ENGINE e FROM information_schema.TABLES WHERE TABLE_SCHEMA IN (?, ?)", [this.cfg.db.radiusDb, this.cfg.db.stateDb]);
     for (const e of engines) if (["radcheck", "radusergroup", ...STATE_TABLES].includes(e.t) && e.e !== "InnoDB") { writesOk = false; problems.push(`engine:${e.t}`); }
+    // Unique-index enforcement: without these, single-use jti, idempotency and identity are advisory only.
+    const [idx] = await this.pool.query<Rows>("SELECT TABLE_NAME t, COLUMN_NAME c FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND NON_UNIQUE = 0", [this.cfg.db.stateDb]);
+    for (const [t, cols] of Object.entries(REQUIRED_UNIQUE))
+      for (const c of cols) if (!idx.some(x => x.t === t && x.c === c)) { writesOk = false; problems.push(`state_index:${t}.${c}`); }
     const [grants] = await this.pool.query<Rows>("SHOW GRANTS FOR CURRENT_USER()");
     for (const g of grants) {
       const line = String(Object.values(g)[0]).toUpperCase();
       if (/ALL PRIVILEGES|SUPER|WITH GRANT OPTION|\bFILE\b|CREATE USER/.test(line) || (/ ON \*\.\* /.test(line) && !/^GRANT USAGE ON \*\.\*/.test(line))) { writesOk = false; problems.push("grants:excessive"); }
+      // A grant line without ON is a role assignment; inherited role privileges cannot be verified here.
+      if (!/ ON /.test(line)) { writesOk = false; problems.push("grants:role_unresolved"); }
     }
     if (writesOk) {
       const [rej] = await this.pool.query<Rows>(`SELECT 1 FROM ${this.r}.radgroupcheck WHERE groupname = ? AND attribute = 'Auth-Type' AND op = ':=' AND value = 'Reject' LIMIT 1`, [this.cfg.semantics.disabledGroup]);
