@@ -145,7 +145,7 @@ export class MySqlStore implements Store {
       }
       if (e instanceof OutcomeUnknownError) throw e;
       throw new Error("mutation failed");
-    } finally { conn.release(); }
+    } finally { if (destroy) conn.destroy(); else conn.release(); }
   }
 
   private async lockSubscriber(conn: PoolConnection, id: string) {
